@@ -6,13 +6,10 @@
     <title>New Qari Hosiery Store</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
@@ -22,7 +19,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        // --- Firebase کی اصلی کیز ---
+        // --- Firebase Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyCxr3iEVkcaqKyP7Mcmb1eZafcPGLOJUB0",
             authDomain: "numan-8e439.firebaseapp.com",
@@ -32,8 +29,9 @@
             appId: "1:791551549061:web:757340191fd3e6425d53ec"
         };
 
-        // Firebase چالو کریں
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
 
         const DELIVERY_CHARGE = 250; 
@@ -48,15 +46,16 @@
             const [selectedCategory, setSelectedCategory] = useState('All');
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
             const [toastMessage, setToastMessage] = useState(null);
+            
+            // ایڈمن سٹیٹ اور خفیہ کلکس
+            const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+            const [secretClicks, setSecretClicks] = useState(0);
 
             const fetchProducts = async () => {
                 setIsLoading(true);
                 try {
                     const querySnapshot = await db.collection("products").get();
-                    const productsList = querySnapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                    const productsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setProducts(productsList);
                 } catch (error) {
                     showToast("ڈیٹا بیس سے رابطہ نہیں ہو سکا۔");
@@ -74,11 +73,7 @@
             const addToCart = (product) => {
                 setCart((prevCart) => {
                     const existingItem = prevCart.find((item) => item.id === product.id);
-                    if (existingItem) {
-                        return prevCart.map((item) =>
-                            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-                        );
-                    }
+                    if (existingItem) return prevCart.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
                     return [...prevCart, { ...product, quantity: 1 }];
                 });
                 showToast(product.name + " ٹوکری میں شامل کر دیا گیا!");
@@ -109,6 +104,23 @@
             }, [products, searchQuery, selectedCategory]);
 
             const formatPrice = (price) => new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(price);
+            const formatDate = (dateString) => new Date(dateString).toLocaleString('ur-PK');
+
+            // --- خفیہ دروازہ کھولنے کا فنکشن (اب 3 بار کلک کرنے پر) ---
+            const handleSecretDoor = () => {
+                const newClicks = secretClicks + 1;
+                setSecretClicks(newClicks);
+                
+                if (newClicks >= 3) {
+                    setView('admin');
+                    setSecretClicks(0); // گنتی دوبارہ صفر کر دیں
+                } else if (view !== 'home') {
+                    setView('home'); // اگر ایڈمن پینل میں نہیں جانا تو ہوم پر ہی رہیں
+                }
+                
+                // 2 سیکنڈ بعد کلکس ری سیٹ کر دیں (تاکہ کسٹمرز غلطی سے نہ کھول لیں)
+                setTimeout(() => setSecretClicks(0), 2000); 
+            };
 
             const Navbar = () => (
                 <nav className="bg-emerald-700 text-white shadow-lg sticky top-0 z-50">
@@ -118,30 +130,22 @@
                                 <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden ml-4 p-2 rounded-md hover:bg-emerald-600">
                                     <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
                                 </button>
-                                <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => setView('home')}>
+                                {/* سٹور کا نام - اس پر 3 دفعہ کلک کرنے سے ایڈمن کھلے گا */}
+                                <div className="flex-shrink-0 flex items-center cursor-pointer select-none" onClick={handleSecretDoor}>
                                     <i className="fas fa-shopping-cart text-emerald-300 text-xl ml-2"></i>
                                     <span className="font-bold text-lg tracking-tight">New Qari Hosiery</span>
                                 </div>
                             </div>
                             <div className="hidden md:flex flex-1 max-w-lg mx-8">
                                 <div className="relative w-full text-gray-900">
-                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <i className="fas fa-search text-gray-400"></i>
-                                    </div>
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><i className="fas fa-search text-gray-400"></i></div>
                                     <input type="text" className="block w-full pr-10 pl-3 py-2 rounded-lg bg-emerald-50 focus:bg-white text-right" placeholder="تلاش کریں..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if (view !== 'home') setView('home'); }} />
                                 </div>
                             </div>
                             <div className="flex items-center space-x-4 space-x-reverse">
-                                <button onClick={() => setView('admin')} className="text-emerald-100 hover:text-white flex items-center text-sm font-medium mr-4">
-                                    <i className="fas fa-cog ml-1"></i> <span className="hidden sm:inline">ایڈمن</span>
-                                </button>
                                 <button onClick={() => setView('cart')} className="relative p-2 rounded-full hover:bg-emerald-600">
                                     <i className="fas fa-shopping-cart text-xl"></i>
-                                    {getCartItemsCount() > 0 && (
-                                        <span className="absolute top-0 left-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-red-100 transform -translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
-                                            {getCartItemsCount()}
-                                        </span>
-                                    )}
+                                    {getCartItemsCount() > 0 && <span className="absolute top-0 left-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-red-100 transform -translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">{getCartItemsCount()}</span>}
                                 </button>
                             </div>
                         </div>
@@ -149,9 +153,63 @@
                 </nav>
             );
 
+            // --- ایڈمن پاسورڈ اور ویو ---
             const AdminView = () => {
+                const [activeTab, setActiveTab] = useState('orders'); 
                 const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'Vests', image: '', description: '' });
                 const [isSaving, setIsSaving] = useState(false);
+                const [orders, setOrders] = useState([]);
+                const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+                const [pinInput, setPinInput] = useState('');
+
+                const handleLogin = (e) => {
+                    e.preventDefault();
+                    if (pinInput === '7860') {  
+                        setIsAdminLoggedIn(true);
+                        showToast("ایڈمن پینل کھل گیا!");
+                    } else {
+                        showToast("❌ غلط پاسورڈ! دوبارہ کوشش کریں۔");
+                        setPinInput('');
+                    }
+                };
+
+                if (!isAdminLoggedIn) {
+                    return (
+                        <div className="max-w-md mx-auto px-4 py-20">
+                            <div className="bg-white p-8 rounded-xl shadow-lg border text-center">
+                                <i className="fas fa-lock text-5xl text-emerald-600 mb-6 block"></i>
+                                <h2 className="text-2xl font-bold mb-2">محفوظ علاقہ</h2>
+                                <p className="text-gray-500 mb-6">ایڈمن پینل کھولنے کے لیے پاسورڈ درج کریں</p>
+                                <form onSubmit={handleLogin}>
+                                    <input 
+                                        type="password" 
+                                        required
+                                        value={pinInput} 
+                                        onChange={(e) => setPinInput(e.target.value)} 
+                                        placeholder="پاسورڈ (PIN)" 
+                                        className="w-full px-4 py-3 border rounded-lg text-center text-2xl tracking-widest mb-4 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                        dir="ltr"
+                                    />
+                                    <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700">لاگ ان کریں</button>
+                                </form>
+                                <button onClick={() => setView('home')} className="mt-4 text-emerald-600 text-sm font-bold"><i className="fas fa-arrow-right ml-1"></i> واپس ہوم پیج پر جائیں</button>
+                            </div>
+                        </div>
+                    );
+                }
+
+                const fetchOrders = async () => {
+                    setIsLoadingOrders(true);
+                    try {
+                        const snapshot = await db.collection("orders").get();
+                        let ordersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        ordersList.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        setOrders(ordersList);
+                    } catch (error) { showToast("آرڈرز لوڈ کرنے میں مسئلہ ہوا۔"); }
+                    setIsLoadingOrders(false);
+                };
+
+                useEffect(() => { if (activeTab === 'orders') fetchOrders(); }, [activeTab]);
 
                 const handleAddProduct = async (e) => {
                     e.preventDefault();
@@ -161,31 +219,108 @@
                         showToast("پروڈکٹ کامیابی سے شامل کر دی گئی!");
                         setNewProduct({ name: '', price: '', category: 'Vests', image: '', description: '' });
                         fetchProducts(); 
-                    } catch (error) {
-                        showToast("خرابی: پروڈکٹ شامل نہیں ہو سکی۔");
-                    }
+                    } catch (error) { showToast("خرابی: پروڈکٹ شامل نہیں ہو سکی۔"); }
                     setIsSaving(false);
                 };
 
+                const handleDeleteProduct = async (id) => {
+                    if (window.confirm("کیا آپ واقعی یہ پروڈکٹ ڈیلیٹ کرنا چاہتے ہیں؟")) {
+                        try {
+                            await db.collection("products").doc(id).delete();
+                            showToast("پروڈکٹ ڈیلیٹ کر دی گئی!");
+                            fetchProducts();
+                        } catch (error) { showToast("پروڈکٹ ڈیلیٹ کرنے میں مسئلہ ہوا۔"); }
+                    }
+                };
+
                 return (
-                    <div className="max-w-3xl mx-auto px-4 py-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                            <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center">
-                                <i className="fas fa-cloud-upload-alt text-emerald-600 ml-2"></i> نئی پروڈکٹ شامل کریں
-                            </h2>
-                            <form onSubmit={handleAddProduct} className="space-y-4">
-                                <input required type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کا نام" />
-                                <input required type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="قیمت (روپے میں)" />
-                                <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right">
-                                    {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <input required type="url" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} placeholder="تصویر کا لنک (URL)" className="w-full px-4 py-2 border rounded-md text-left" dir="ltr" />
-                                <textarea required rows="3" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کی تفصیل..."></textarea>
-                                <button type="submit" disabled={isSaving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold">
-                                    {isSaving ? 'محفوظ ہو رہا ہے...' : 'پروڈکٹ شامل کریں'}
-                                </button>
-                            </form>
+                    <div className="max-w-4xl mx-auto px-4 py-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-3xl font-bold text-gray-800"><i className="fas fa-shield-alt text-emerald-600 ml-2"></i>ایڈمن پینل</h2>
+                            <button onClick={() => setIsAdminLoggedIn(false)} className="bg-red-100 text-red-600 px-4 py-2 rounded hover:bg-red-200 font-bold text-sm"><i className="fas fa-sign-out-alt ml-1"></i> لاگ آؤٹ</button>
                         </div>
+                        
+                        <div className="flex bg-white rounded-lg shadow mb-6 overflow-hidden border">
+                            <button onClick={() => setActiveTab('orders')} className={`flex-1 py-3 text-center font-bold ${activeTab === 'orders' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>آرڈرز</button>
+                            <button onClick={() => setActiveTab('manage')} className={`flex-1 py-3 text-center font-bold border-r ${activeTab === 'manage' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>پروڈکٹس کی لسٹ</button>
+                            <button onClick={() => setActiveTab('add')} className={`flex-1 py-3 text-center font-bold border-r ${activeTab === 'add' ? 'bg-emerald-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}>نئی پروڈکٹ</button>
+                        </div>
+
+                        {activeTab === 'orders' && (
+                            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                                <h3 className="text-xl font-bold mb-4 border-b pb-2">موصول ہونے والے آرڈرز</h3>
+                                {isLoadingOrders ? <p className="text-center text-emerald-600">لوڈ ہو رہا ہے...</p> : orders.length === 0 ? <p className="text-center text-gray-500 py-10">ابھی تک کوئی آرڈر نہیں ملا۔</p> : (
+                                    <div className="space-y-4">
+                                        {orders.map(order => (
+                                            <div key={order.id} className="border p-4 rounded-lg bg-gray-50">
+                                                <div className="flex justify-between items-start mb-3 border-b pb-3">
+                                                    <div>
+                                                        <h4 className="font-bold text-lg">{order.customer?.name || 'نامعلوم'}</h4>
+                                                        <p className="text-gray-600 text-sm" dir="ltr">{order.customer?.phone}</p>
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-bold">{order.status || 'Pending'}</span>
+                                                        <p className="text-gray-500 text-xs mt-1">{formatDate(order.date)}</p>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm mb-3"><strong>پتہ: </strong> {order.customer?.address}</p>
+                                                <div className="bg-white p-3 rounded border">
+                                                    <p className="font-bold text-sm mb-2">آرڈر کی تفصیل:</p>
+                                                    <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                                                        {order.items?.map((item, idx) => (
+                                                            <li key={idx}>{item.name} <span className="font-bold text-emerald-600">({item.quantity}x)</span> - {formatPrice(item.price * item.quantity)}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                                <div className="mt-3 text-left font-extrabold text-emerald-700 text-lg">
+                                                    کل بل: {formatPrice(order.totalAmount)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'manage' && (
+                            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                                <h3 className="text-xl font-bold mb-4 border-b pb-2">موجودہ پروڈکٹس</h3>
+                                {products.length === 0 ? <p className="text-center text-gray-500 py-10">سٹور میں کوئی پروڈکٹ موجود نہیں۔</p> : (
+                                    <div className="space-y-3">
+                                        {products.map(product => (
+                                            <div key={product.id} className="flex items-center justify-between border p-3 rounded-lg">
+                                                <div className="flex items-center">
+                                                    <img src={product.image} className="w-12 h-12 object-cover rounded mr-4" />
+                                                    <div>
+                                                        <h4 className="font-bold">{product.name}</h4>
+                                                        <p className="text-emerald-600 text-sm font-bold">{formatPrice(product.price)}</p>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleDeleteProduct(product.id)} className="bg-red-100 text-red-600 p-2 rounded hover:bg-red-200">
+                                                    <i className="fas fa-trash"></i> ڈیلیٹ
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'add' && (
+                            <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                                <h3 className="text-xl font-bold mb-4 border-b pb-2">نئی پروڈکٹ شامل کریں</h3>
+                                <form onSubmit={handleAddProduct} className="space-y-4">
+                                    <input required type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کا نام" />
+                                    <input required type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="قیمت (روپے میں)" />
+                                    <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right">
+                                        {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <input required type="url" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} placeholder="تصویر کا لنک (URL)" className="w-full px-4 py-2 border rounded-md text-left" dir="ltr" />
+                                    <textarea required rows="3" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کی تفصیل..."></textarea>
+                                    <button type="submit" disabled={isSaving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold">{isSaving ? 'محفوظ ہو رہا ہے...' : 'پروڈکٹ شامل کریں'}</button>
+                                </form>
+                            </div>
+                        )}
                     </div>
                 );
             };
@@ -197,20 +332,16 @@
                         <p className="text-gray-600">اعلیٰ کوالٹی ہوزری پروڈکٹس - ہول سیل ریٹ پر</p>
                     </div>
                     <div className="max-w-7xl mx-auto px-4 py-8">
-                        {isLoading ? (
-                            <div className="text-center py-20 text-emerald-600 font-bold text-xl">لوڈ ہو رہا ہے...</div>
-                        ) : (
+                        {isLoading ? <div className="text-center py-20 text-emerald-600 font-bold text-xl">لوڈ ہو رہا ہے...</div> : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {filteredProducts.map((product) => (
-                                    <div key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col border border-gray-100 p-4">
+                                    <div key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col border border-gray-100 p-4 relative group">
                                         <img src={product.image} alt={product.name} className="w-full h-48 object-cover rounded-lg mb-4" />
                                         <h3 className="text-lg font-bold text-gray-900">{product.name}</h3>
                                         <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
                                         <div className="mt-auto flex items-center justify-between">
                                             <span className="text-xl font-extrabold text-emerald-700">{formatPrice(product.price)}</span>
-                                            <button onClick={() => addToCart(product)} className="bg-emerald-600 text-white w-10 h-10 rounded-full hover:bg-emerald-700 flex items-center justify-center shadow">
-                                                <i className="fas fa-plus"></i>
-                                            </button>
+                                            <button onClick={() => addToCart(product)} className="bg-emerald-600 text-white w-10 h-10 rounded-full hover:bg-emerald-700 flex items-center justify-center shadow"><i className="fas fa-plus"></i></button>
                                         </div>
                                     </div>
                                 ))}
@@ -222,13 +353,9 @@
 
             const CartView = () => (
                 <div className="max-w-5xl mx-auto px-4 py-8">
-                    <button onClick={() => setView('home')} className="text-emerald-600 mb-6 flex items-center font-bold">
-                        <i className="fas fa-arrow-right ml-2"></i> واپسی
-                    </button>
+                    <button onClick={() => setView('home')} className="text-emerald-600 mb-6 flex items-center font-bold"><i className="fas fa-arrow-right ml-2"></i> واپسی</button>
                     <h1 className="text-3xl font-bold mb-8">آپ کی ٹوکری</h1>
-                    {cart.length === 0 ? (
-                        <div className="text-center py-20 bg-white rounded-lg shadow-sm">آپ کی ٹوکری خالی ہے۔</div>
-                    ) : (
+                    {cart.length === 0 ? <div className="text-center py-20 bg-white rounded-lg shadow-sm">آپ کی ٹوکری خالی ہے۔</div> : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-4">
                                 {cart.map(item => (
@@ -254,38 +381,89 @@
                                 <div className="flex justify-between mb-2"><span>سامان کی قیمت:</span><span>{formatPrice(getCartSubtotal())}</span></div>
                                 <div className="flex justify-between mb-4 text-emerald-600"><span>ڈلیوری چارجز:</span><span>+{formatPrice(DELIVERY_CHARGE)}</span></div>
                                 <div className="border-t pt-4 flex justify-between font-bold text-xl"><span>کل رقم:</span><span>{formatPrice(getGrandTotal())}</span></div>
-                                <button onClick={() => setView('checkout')} className="w-full bg-emerald-600 text-white py-3 rounded-lg mt-6 font-bold">آرڈر مکمل کریں</button>
+                                <button onClick={() => setView('checkout')} className="w-full bg-emerald-600 text-white py-3 rounded-lg mt-6 font-bold">چیک آؤٹ پر جائیں</button>
                             </div>
                         </div>
                     )}
                 </div>
             );
 
+            const CheckoutView = () => {
+                const [customer, setCustomer] = useState({ name: '', phone: '', address: '' });
+                const [isSubmitting, setIsSubmitting] = useState(false);
+
+                const handleCheckout = async (e) => {
+                    e.preventDefault();
+                    setIsSubmitting(true);
+                    
+                    try {
+                        await db.collection("orders").add({
+                            customer,
+                            items: cart,
+                            totalAmount: getGrandTotal(),
+                            date: new Date().toISOString(),
+                            status: 'Pending'
+                        });
+
+                        let orderText = cart.map(item => `▪️ ${item.name} (${item.quantity}x)`).join('%0A');
+                        let waMessage = `*نیا آرڈر موصول ہوا ہے!* 🛍️%0A%0A*👤 کسٹمر کا نام:* ${customer.name}%0A*📞 فون:* ${customer.phone}%0A*📍 پتہ:* ${customer.address}%0A%0A*📦 آرڈر کی تفصیل:*%0A${orderText}%0A%0A*💰 کل بل:* Rs. ${getGrandTotal()}%0A*(کیش آن ڈلیوری)*`;
+                        
+                        window.open(`https://wa.me/923065378112?text=${waMessage}`, '_blank');
+
+                        setCart([]);
+                        setView('success');
+                    } catch (error) {
+                        showToast("آرڈر بھیجنے میں مسئلہ ہوا۔ دوبارہ کوشش کریں۔");
+                    }
+                    setIsSubmitting(false);
+                };
+
+                return (
+                    <div className="max-w-2xl mx-auto px-4 py-8">
+                        <button onClick={() => setView('cart')} className="text-emerald-600 mb-6 flex items-center font-bold"><i className="fas fa-arrow-right ml-2"></i> واپس ٹوکری میں</button>
+                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                            <h2 className="text-2xl font-bold mb-6 border-b pb-4">ڈلیوری کی تفصیلات درج کریں</h2>
+                            <form onSubmit={handleCheckout} className="space-y-4">
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-2">مکمل نام</label>
+                                    <input required type="text" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} className="w-full px-4 py-2 border rounded-md" placeholder="اپنا نام لکھیں" />
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-2">موبائل نمبر</label>
+                                    <input required type="tel" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} className="w-full px-4 py-2 border rounded-md text-left" dir="ltr" placeholder="03XX-XXXXXXX" />
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-2">مکمل پتہ (Address)</label>
+                                    <textarea required rows="3" value={customer.address} onChange={e => setCustomer({...customer, address: e.target.value})} className="w-full px-4 py-2 border rounded-md" placeholder="گھر کا نمبر، گلی، علاقہ اور شہر..."></textarea>
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-lg mt-6">
+                                    <div className="flex justify-between font-bold text-lg mb-2"><span>کل ادا کرنے والی رقم:</span><span className="text-emerald-700">{formatPrice(getGrandTotal())}</span></div>
+                                    <p className="text-sm text-gray-600">پیمنٹ کا طریقہ: کیش آن ڈلیوری (COD)</p>
+                                </div>
+                                <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-lg font-bold text-lg mt-4 flex justify-center items-center">
+                                    {isSubmitting ? 'پروسیس ہو رہا ہے...' : <><i className="fab fa-whatsapp text-2xl ml-2"></i> آرڈر کنفرم کریں</>}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
             return (
                 <div className="min-h-screen text-right">
                     <Navbar />
-                    {toastMessage && (
-                        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-800 text-white px-6 py-3 rounded-full shadow-lg text-center">
-                            {toastMessage}
-                        </div>
-                    )}
+                    {toastMessage && <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-800 text-white px-6 py-3 rounded-full shadow-lg text-center">{toastMessage}</div>}
                     <main>
                         {view === 'home' && <HomeView />}
                         {view === 'admin' && <AdminView />}
                         {view === 'cart' && <CartView />}
-                        {view === 'checkout' && (
-                            <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-                                <h1 className="text-2xl font-bold mb-4">چیک آؤٹ</h1>
-                                <p className="mb-8">آرڈر کنفرم کرنے کے لیے نیچے بٹن دبائیں (کیش آن ڈلیوری)</p>
-                                <button onClick={() => setView('success')} className="bg-emerald-600 text-white px-10 py-4 rounded-lg font-bold text-xl">آرڈر کنفرم کریں</button>
-                            </div>
-                        )}
+                        {view === 'checkout' && <CheckoutView />}
                         {view === 'success' && (
                             <div className="max-w-md mx-auto px-4 py-20 text-center">
                                 <i className="fas fa-check-circle text-6xl text-emerald-500 mb-6 block"></i>
-                                <h1 className="text-3xl font-bold mb-4">شکریہ!</h1>
-                                <p className="text-gray-600 mb-8">آپ کا آرڈر موصول ہو گیا ہے۔ جلد ہی آپ سے رابطہ کیا جائے گا۔</p>
-                                <button onClick={() => {setCart([]); setView('home');}} className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold">ہوم پیج پر جائیں</button>
+                                <h1 className="text-3xl font-bold mb-4">آرڈر موصول ہو گیا!</h1>
+                                <p className="text-gray-600 mb-8">آپ کا آرڈر کامیابی سے درج ہو گیا ہے اور واٹس ایپ پر بھیج دیا گیا ہے۔ جلد ہی آپ سے رابطہ کیا جائے گا۔</p>
+                                <button onClick={() => setView('home')} className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold">مزید شاپنگ کریں</button>
                             </div>
                         )}
                     </main>
@@ -298,3 +476,4 @@
     </script>
 </body>
 </html>
+ 
