@@ -10,8 +10,10 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 </head>
 <body class="bg-gray-50 font-sans text-right">
     <div id="root"></div>
@@ -30,6 +32,7 @@
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage(); // سٹوریج کو چالو کیا گیا
 
         const DELIVERY_CHARGE = 250; 
         const categories = ['All', 'Vests', 'Caps', 'Trousers', 'Undergarments', 'Accessories'];
@@ -44,10 +47,9 @@
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
             const [toastMessage, setToastMessage] = useState(null);
             
-            // نئے فیچرز کی سٹیٹ
             const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
             const [secretClicks, setSecretClicks] = useState(0);
-            const [selectedProduct, setSelectedProduct] = useState(null); // پاپ اپ کے لیے
+            const [selectedProduct, setSelectedProduct] = useState(null);
 
             const fetchProducts = async () => {
                 setIsLoading(true);
@@ -84,7 +86,6 @@
                 showToast(product.name + " ٹوکری میں شامل کر دیا گیا!");
             };
 
-            // Navbar
             const Navbar = () => (
                 <nav className="bg-emerald-700 text-white shadow-lg sticky top-0 z-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -115,11 +116,11 @@
                 </nav>
             );
 
-            // Admin View (سیم پرانا والا)
             const AdminView = () => {
                 const [activeTab, setActiveTab] = useState('orders'); 
                 const [editingProduct, setEditingProduct] = useState(null);
                 const [productForm, setProductForm] = useState({ name: '', price: '', category: 'Vests', image: '', description: '' });
+                const [imageFile, setImageFile] = useState(null); // تصویر کی فائل کے لیے نیا سٹیٹ
                 const [orders, setOrders] = useState([]);
                 const [isLoadingOrders, setIsLoadingOrders] = useState(false);
                 const [pinInput, setPinInput] = useState('');
@@ -141,21 +142,47 @@
                     else { showToast("غلط پاسورڈ!"); setPinInput(''); }
                 };
 
+                // پروڈکٹ سیو کرنے کا نیا فنکشن (تصویر اپلوڈ کے ساتھ)
                 const handleSaveProduct = async (e) => {
                     e.preventDefault();
+                    setIsSaving(true);
+                    
                     try {
-                        if (editingProduct) {
-                            await db.collection("products").doc(editingProduct.id).update({ ...productForm, price: Number(productForm.price) });
-                            showToast("پروڈکٹ اپڈیٹ کر دی گئی!");
-                        } else {
-                            await db.collection("products").add({ ...productForm, price: Number(productForm.price) });
-                            showToast("نئی پروڈکٹ شامل ہو گئی!");
+                        let imageUrl = productForm.image;
+
+                        // اگر نئی تصویر سلیکٹ کی گئی ہے تو پہلے اسے اپلوڈ کریں
+                        if (imageFile) {
+                            showToast("تصویر اپلوڈ ہو رہی ہے، براہ کرم انتظار کریں...");
+                            const storageRef = storage.ref();
+                            const fileRef = storageRef.child(`products/${Date.now()}_${imageFile.name}`);
+                            await fileRef.put(imageFile);
+                            imageUrl = await fileRef.getDownloadURL();
+                        } else if (!editingProduct && !imageUrl) {
+                            showToast("❌ براہ کرم تصویر اپلوڈ کریں!");
+                            setIsSaving(false);
+                            return;
                         }
+
+                        const productData = { ...productForm, price: Number(productForm.price), image: imageUrl };
+
+                        if (editingProduct) {
+                            await db.collection("products").doc(editingProduct.id).update(productData);
+                            showToast("پروڈکٹ کامیابی سے اپڈیٹ ہو گئی!");
+                        } else {
+                            await db.collection("products").add(productData);
+                            showToast("نئی پروڈکٹ کامیابی سے شامل ہو گئی!");
+                        }
+                        
                         setProductForm({ name: '', price: '', category: 'Vests', image: '', description: '' });
+                        setImageFile(null); // تصویر کلیئر کریں
                         setEditingProduct(null);
                         fetchProducts();
                         setActiveTab('manage');
-                    } catch (error) { showToast("محفوظ کرنے میں مسئلہ ہوا۔"); }
+                    } catch (error) { 
+                        console.error(error);
+                        showToast("محفوظ کرنے میں مسئلہ ہوا۔"); 
+                    }
+                    setIsSaving(false);
                 };
 
                 const updateOrderStatus = async (id, newStatus) => {
@@ -166,7 +193,12 @@
                     } catch (error) { showToast("اپڈیٹ نہیں ہو سکا۔"); }
                 };
 
-                const startEdit = (p) => { setEditingProduct(p); setProductForm(p); setActiveTab('add'); };
+                const startEdit = (p) => { 
+                    setEditingProduct(p); 
+                    setProductForm(p); 
+                    setImageFile(null); // پرانی فائل سلیکشن کلیئر کریں
+                    setActiveTab('add'); 
+                };
 
                 if (!isAdminLoggedIn) return (
                     <div className="max-w-md mx-auto px-4 py-20 text-center">
@@ -187,7 +219,7 @@
                         <div className="flex bg-white rounded-lg shadow mb-6 border overflow-hidden">
                             <button onClick={()=>setActiveTab('orders')} className={`flex-1 py-3 font-bold ${activeTab==='orders'?'bg-emerald-600 text-white':'text-gray-600'}`}>آرڈرز</button>
                             <button onClick={()=>setActiveTab('manage')} className={`flex-1 py-3 font-bold border-r ${activeTab==='manage'?'bg-emerald-600 text-white':'text-gray-600'}`}>پروڈکٹس</button>
-                            <button onClick={()=>{setActiveTab('add'); setEditingProduct(null); setProductForm({name:'',price:'',category:'Vests',image:'',description:''})}} className={`flex-1 py-3 font-bold border-r ${activeTab==='add'?'bg-emerald-600 text-white':'text-gray-600'}`}>{editingProduct?'ایڈٹ':'نئی پروڈکٹ'}</button>
+                            <button onClick={()=>{setActiveTab('add'); setEditingProduct(null); setProductForm({name:'',price:'',category:'Vests',image:'',description:''}); setImageFile(null);}} className={`flex-1 py-3 font-bold border-r ${activeTab==='add'?'bg-emerald-600 text-white':'text-gray-600'}`}>{editingProduct?'ایڈٹ پروڈکٹ':'نئی پروڈکٹ'}</button>
                         </div>
 
                         {activeTab === 'orders' && (
@@ -229,19 +261,41 @@
 
                         {activeTab === 'add' && (
                             <form onSubmit={handleSaveProduct} className="bg-white p-6 rounded-lg shadow border space-y-4 text-right">
-                                <input required value={productForm.name} onChange={e=>setProductForm({...productForm, name:e.target.value})} placeholder="پروڈکٹ کا نام" className="w-full p-2 border rounded"/>
-                                <input required type="number" value={productForm.price} onChange={e=>setProductForm({...productForm, price:e.target.value})} placeholder="قیمت" className="w-full p-2 border rounded"/>
-                                <select value={productForm.category} onChange={e=>setProductForm({...productForm, category:e.target.value})} className="w-full p-2 border rounded">{categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}</select>
-                                <input required value={productForm.image} onChange={e=>setProductForm({...productForm, image:e.target.value})} placeholder="تصویر کا لنک (URL)" className="w-full p-2 border rounded text-left" dir="ltr"/>
-                                <textarea value={productForm.description} onChange={e=>setProductForm({...productForm, description:e.target.value})} placeholder="تفصیل" className="w-full p-2 border rounded" rows="3"></textarea>
-                                <button className="w-full bg-emerald-600 text-white py-3 rounded font-bold">{editingProduct?'اپڈیٹ کریں':'شامل کریں'}</button>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-1 text-sm">پروڈکٹ کا نام</label>
+                                    <input required value={productForm.name} onChange={e=>setProductForm({...productForm, name:e.target.value})} placeholder="مثال: مردانہ بنیان" className="w-full p-2 border rounded"/>
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-1 text-sm">قیمت (روپے میں)</label>
+                                    <input required type="number" value={productForm.price} onChange={e=>setProductForm({...productForm, price:e.target.value})} placeholder="مثال: 500" className="w-full p-2 border rounded"/>
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-1 text-sm">کیٹیگری</label>
+                                    <select value={productForm.category} onChange={e=>setProductForm({...productForm, category:e.target.value})} className="w-full p-2 border rounded">{categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}</select>
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-1 text-sm">تصویر اپلوڈ کریں</label>
+                                    <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} className="w-full p-2 border rounded bg-gray-50 text-sm" />
+                                    {editingProduct && productForm.image && !imageFile && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-gray-500 mb-1">پہلے سے موجود تصویر:</p>
+                                            <img src={productForm.image} className="w-16 h-16 rounded object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-gray-700 font-bold mb-1 text-sm">پروڈکٹ کی تفصیل</label>
+                                    <textarea required value={productForm.description} onChange={e=>setProductForm({...productForm, description:e.target.value})} placeholder="کپڑے کی کوالٹی، سائز وغیرہ..." className="w-full p-2 border rounded" rows="3"></textarea>
+                                </div>
+                                <button type="submit" disabled={isSaving} className={`w-full text-white py-3 rounded font-bold ${isSaving ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}>
+                                    {isSaving ? 'اپلوڈ ہو رہا ہے... تھوڑا انتظار کریں' : (editingProduct ? 'اپڈیٹ کریں' : 'شامل کریں')}
+                                </button>
                             </form>
                         )}
                     </div>
                 );
             };
 
-            // Home View
             const HomeView = () => (
                 <div>
                     <div className="bg-emerald-50 py-12 text-center px-4 border-b border-emerald-100">
@@ -249,7 +303,6 @@
                         <p className="text-gray-600 text-lg">اعلیٰ کوالٹی ہوزری پروڈکٹس - ہول سیل اور ریٹیل</p>
                     </div>
 
-                    {/* Categories Filter */}
                     <div className="overflow-x-auto py-4 px-4 whitespace-nowrap hide-scrollbar flex justify-center gap-2 bg-white shadow-sm">
                         {categories.map((cat) => (
                             <button 
@@ -268,7 +321,6 @@
                             <div key={p.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 flex flex-col overflow-hidden group cursor-pointer" onClick={() => setSelectedProduct(p)}>
                                 <div className="relative overflow-hidden">
                                     <img src={p.image} className="w-full h-40 md:h-56 object-cover group-hover:scale-105 transition-transform duration-300"/>
-                                    {/* Discount / View Badge */}
                                     <div className="absolute top-2 right-2 bg-white/90 text-emerald-700 text-xs font-bold px-2 py-1 rounded shadow-sm">
                                         <i className="fas fa-eye mr-1"></i> تفصیل
                                     </div>
@@ -297,7 +349,6 @@
                     {view === 'home' && <HomeView />}
                     {view === 'admin' && <AdminView />}
                     
-                    {/* پروڈکٹ پاپ اپ (Quick View Modal) */}
                     {selectedProduct && (
                         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setSelectedProduct(null)}>
                             <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden relative shadow-2xl transform transition-all" onClick={(e) => e.stopPropagation()}>
@@ -320,7 +371,6 @@
                         </div>
                     )}
 
-                    {/* Cart View */}
                     {view === 'cart' && (
                         <div className="p-4 max-w-3xl mx-auto">
                             <button onClick={()=>setView('home')} className="mb-6 text-emerald-600 font-bold flex items-center"><i className="fas fa-arrow-right ml-2"></i> شاپنگ جاری رکھیں</button>
@@ -355,7 +405,6 @@
                         </div>
                     )}
                     
-                    {/* Checkout View */}
                     {view === 'checkout' && (
                         <div className="p-4 max-w-xl mx-auto py-8">
                             <button onClick={()=>setView('cart')} className="mb-6 text-emerald-600 font-bold flex items-center"><i className="fas fa-arrow-right ml-2"></i> واپس ٹوکری میں</button>
@@ -390,7 +439,6 @@
                         </div>
                     )}
 
-                    {/* Success View */}
                     {view === 'success' && (
                         <div className="text-center py-20 px-4 max-w-md mx-auto">
                             <i className="fas fa-check-circle text-7xl text-emerald-500 mb-6 block animate-pulse"></i>
@@ -400,7 +448,6 @@
                         </div>
                     )}
 
-                    {/* Floating WhatsApp Button */}
                     <a href="https://wa.me/923065378112?text=السلام علیکم، مجھے آپ کے سٹور سے کچھ معلومات چاہیے تھیں۔" target="_blank" className="fixed bottom-6 left-6 bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg text-3xl z-40 hover:bg-green-600 transition-transform hover:scale-110">
                         <i className="fab fa-whatsapp"></i>
                     </a>
