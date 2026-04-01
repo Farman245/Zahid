@@ -1,28 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Qari Hosiery Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body>
+<body class="bg-gray-50 font-sans">
     <div id="root"></div>
     <script type="text/babel">
+        const { useState, useEffect } = React;
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxr3iEVkcaqKyP7Mcmb1eZafcPGLOJUB0",
+            authDomain: "numan-8e439.firebaseapp.com",
+            projectId: "numan-8e439",
+            storageBucket: "numan-8e439.firebasestorage.app",
+            messagingSenderId: "791551549061",
+            appId: "1:791551549061:web:757340191fd3e6425d53ec"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         function App() {
+            const [view, setView] = useState('home');
+            const [products, setProducts] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+
+            useEffect(() => {
+                db.collection("products").onSnapshot(snap => {
+                    setProducts(snap.docs.map(doc => ({id: doc.id, ...doc.data()})));
+                    setIsLoading(false);
+                });
+            }, []);
+
             return (
-                <div className="min-h-screen bg-emerald-900 flex flex-col items-center justify-center text-white p-6 text-center">
-                    <h1 className="text-5xl font-extrabold mb-4">New Qari Hosiery</h1>
-                    <p className="text-xl mb-8 opacity-80">Premium Quality Wholesale Store</p>
-                    <div className="bg-white/10 p-8 rounded-3xl backdrop-blur-lg border border-white/20 shadow-2xl">
-                        <i className="fas fa-link text-4xl mb-4 text-emerald-400"></i>
-                        <h2 className="text-2xl font-bold">Domain Connecting...</h2>
-                        <p className="text-sm mt-3 opacity-70">We are linking your custom domain. <br/> This may take up to 30 minutes.</p>
-                    </div>
+                <div className="min-h-screen">
+                    <nav className="bg-emerald-800 text-white p-4 shadow-lg sticky top-0 z-50 flex justify-between items-center">
+                        <h1 className="font-bold text-xl">New Qari Hosiery Store</h1>
+                        <button onClick={() => setView('home')} className="hover:text-emerald-200">Home</button>
+                    </nav>
+
+                    {view === 'home' && (
+                        <div>
+                            {/* Hero Section with Background */}
+                            <div className="relative h-[400px] flex items-center justify-center text-center text-white">
+                                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1920&auto=format&fit=crop')] bg-cover bg-center">
+                                    <div className="absolute inset-0 bg-black/60"></div>
+                                </div>
+                                <div className="relative z-10 px-6">
+                                    <h2 className="text-4xl md:text-6xl font-black mb-4 uppercase tracking-tighter">Welcome to Qari Hosiery</h2>
+                                    <p className="text-lg md:text-2xl text-emerald-300 font-medium">Your Premium Destination for Quality Wholesale & Retail</p>
+                                    <button onClick={() => window.scrollTo({top: 450, behavior: 'smooth'})} className="mt-8 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-full font-bold shadow-xl transition-all">Start Shopping</button>
+                                </div>
+                            </div>
+
+                            {/* Products Section */}
+                            <div className="max-w-7xl mx-auto p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {isLoading ? <p className="col-span-full text-center py-20 text-gray-400 font-bold">Connecting to Store...</p> : 
+                                 products.map(p => (
+                                    <div key={p.id} className="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                                        <img src={p.image} className="w-full h-48 object-cover" />
+                                        <div className="p-4">
+                                            <h3 className="font-bold text-gray-800">{p.name}</h3>
+                                            <p className="text-emerald-700 font-black text-xl mt-2">Rs. {p.price}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -30,4 +82,3 @@
     </script>
 </body>
 </html>
- 
