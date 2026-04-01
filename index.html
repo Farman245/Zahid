@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Qari Hosiery Store</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-50 font-sans text-right">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        // --- Firebase کی اصلی کیز ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxr3iEVkcaqKyP7Mcmb1eZafcPGLOJUB0",
+            authDomain: "numan-8e439.firebaseapp.com",
+            projectId: "numan-8e439",
+            storageBucket: "numan-8e439.firebasestorage.app",
+            messagingSenderId: "791551549061",
+            appId: "1:791551549061:web:757340191fd3e6425d53ec"
+        };
+
+        // Firebase چالو کریں
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const DELIVERY_CHARGE = 250; 
+        const categories = ['All', 'Vests', 'Caps', 'Trousers', 'Undergarments', 'Accessories'];
+
+        function App() {
+            const [view, setView] = useState('home'); 
+            const [products, setProducts] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [cart, setCart] = useState([]);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedCategory, setSelectedCategory] = useState('All');
+            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+
+            const fetchProducts = async () => {
+                setIsLoading(true);
+                try {
+                    const querySnapshot = await db.collection("products").get();
+                    const productsList = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setProducts(productsList);
+                } catch (error) {
+                    showToast("ڈیٹا بیس سے رابطہ نہیں ہو سکا۔");
+                }
+                setIsLoading(false);
+            };
+
+            useEffect(() => { fetchProducts(); }, []);
+
+            const showToast = (message) => {
+                setToastMessage(message);
+                setTimeout(() => setToastMessage(null), 3000);
+            };
+
+            const addToCart = (product) => {
+                setCart((prevCart) => {
+                    const existingItem = prevCart.find((item) => item.id === product.id);
+                    if (existingItem) {
+                        return prevCart.map((item) =>
+                            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                        );
+                    }
+                    return [...prevCart, { ...product, quantity: 1 }];
+                });
+                showToast(product.name + " ٹوکری میں شامل کر دیا گیا!");
+            };
+
+            const removeFromCart = (productId) => setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+
+            const updateQuantity = (productId, delta) => {
+                setCart((prevCart) => prevCart.map((item) => {
+                    if (item.id === productId) {
+                        const newQuantity = item.quantity + delta;
+                        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
+                    }
+                    return item;
+                }));
+            };
+
+            const getCartSubtotal = () => cart.reduce((total, item) => total + item.price * item.quantity, 0);
+            const getCartItemsCount = () => cart.reduce((count, item) => count + item.quantity, 0);
+            const getGrandTotal = () => getCartSubtotal() > 0 ? getCartSubtotal() + DELIVERY_CHARGE : 0;
+
+            const filteredProducts = useMemo(() => {
+                return products.filter((product) => {
+                    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+                    const matchesSearch = product.name?.toLowerCase().includes(searchQuery.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                });
+            }, [products, searchQuery, selectedCategory]);
+
+            const formatPrice = (price) => new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(price);
+
+            const Navbar = () => (
+                <nav className="bg-emerald-700 text-white shadow-lg sticky top-0 z-50">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex justify-between h-16 items-center">
+                            <div className="flex items-center">
+                                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden ml-4 p-2 rounded-md hover:bg-emerald-600">
+                                    <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'} text-xl`}></i>
+                                </button>
+                                <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => setView('home')}>
+                                    <i className="fas fa-shopping-cart text-emerald-300 text-xl ml-2"></i>
+                                    <span className="font-bold text-lg tracking-tight">New Qari Hosiery</span>
+                                </div>
+                            </div>
+                            <div className="hidden md:flex flex-1 max-w-lg mx-8">
+                                <div className="relative w-full text-gray-900">
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <i className="fas fa-search text-gray-400"></i>
+                                    </div>
+                                    <input type="text" className="block w-full pr-10 pl-3 py-2 rounded-lg bg-emerald-50 focus:bg-white text-right" placeholder="تلاش کریں..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); if (view !== 'home') setView('home'); }} />
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-4 space-x-reverse">
+                                <button onClick={() => setView('admin')} className="text-emerald-100 hover:text-white flex items-center text-sm font-medium mr-4">
+                                    <i className="fas fa-cog ml-1"></i> <span className="hidden sm:inline">ایڈمن</span>
+                                </button>
+                                <button onClick={() => setView('cart')} className="relative p-2 rounded-full hover:bg-emerald-600">
+                                    <i className="fas fa-shopping-cart text-xl"></i>
+                                    {getCartItemsCount() > 0 && (
+                                        <span className="absolute top-0 left-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-red-100 transform -translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
+                                            {getCartItemsCount()}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            );
+
+            const AdminView = () => {
+                const [newProduct, setNewProduct] = useState({ name: '', price: '', category: 'Vests', image: '', description: '' });
+                const [isSaving, setIsSaving] = useState(false);
+
+                const handleAddProduct = async (e) => {
+                    e.preventDefault();
+                    setIsSaving(true);
+                    try {
+                        await db.collection("products").add({ ...newProduct, price: Number(newProduct.price) });
+                        showToast("پروڈکٹ کامیابی سے شامل کر دی گئی!");
+                        setNewProduct({ name: '', price: '', category: 'Vests', image: '', description: '' });
+                        fetchProducts(); 
+                    } catch (error) {
+                        showToast("خرابی: پروڈکٹ شامل نہیں ہو سکی۔");
+                    }
+                    setIsSaving(false);
+                };
+
+                return (
+                    <div className="max-w-3xl mx-auto px-4 py-8">
+                        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center">
+                                <i className="fas fa-cloud-upload-alt text-emerald-600 ml-2"></i> نئی پروڈکٹ شامل کریں
+                            </h2>
+                            <form onSubmit={handleAddProduct} className="space-y-4">
+                                <input required type="text" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کا نام" />
+                                <input required type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="قیمت (روپے میں)" />
+                                <select value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right">
+                                    {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <input required type="url" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} placeholder="تصویر کا لنک (URL)" className="w-full px-4 py-2 border rounded-md text-left" dir="ltr" />
+                                <textarea required rows="3" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full px-4 py-2 border rounded-md text-right" placeholder="پروڈکٹ کی تفصیل..."></textarea>
+                                <button type="submit" disabled={isSaving} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-bold">
+                                    {isSaving ? 'محفوظ ہو رہا ہے...' : 'پروڈکٹ شامل کریں'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            const HomeView = () => (
+                <div className="bg-gray-50 min-h-screen">
+                    <div className="bg-emerald-50 py-10 px-4 text-center border-b border-emerald-100">
+                        <h1 className="text-3xl font-extrabold text-emerald-900 mb-2">New Qari Hosiery Store</h1>
+                        <p className="text-gray-600">اعلیٰ کوالٹی ہوزری پروڈکٹس - ہول سیل ریٹ پر</p>
+                    </div>
+                    <div className="max-w-7xl mx-auto px-4 py-8">
+                        {isLoading ? (
+                            <div className="text-center py-20 text-emerald-600 font-bold text-xl">لوڈ ہو رہا ہے...</div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {filteredProducts.map((product) => (
+                                    <div key={product.id} className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col border border-gray-100 p-4">
+                                        <img src={product.image} alt={product.name} className="w-full h-48 object-cover rounded-lg mb-4" />
+                                        <h3 className="text-lg font-bold text-gray-900">{product.name}</h3>
+                                        <p className="text-gray-500 text-sm mb-4 line-clamp-2">{product.description}</p>
+                                        <div className="mt-auto flex items-center justify-between">
+                                            <span className="text-xl font-extrabold text-emerald-700">{formatPrice(product.price)}</span>
+                                            <button onClick={() => addToCart(product)} className="bg-emerald-600 text-white w-10 h-10 rounded-full hover:bg-emerald-700 flex items-center justify-center shadow">
+                                                <i className="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+            const CartView = () => (
+                <div className="max-w-5xl mx-auto px-4 py-8">
+                    <button onClick={() => setView('home')} className="text-emerald-600 mb-6 flex items-center font-bold">
+                        <i className="fas fa-arrow-right ml-2"></i> واپسی
+                    </button>
+                    <h1 className="text-3xl font-bold mb-8">آپ کی ٹوکری</h1>
+                    {cart.length === 0 ? (
+                        <div className="text-center py-20 bg-white rounded-lg shadow-sm">آپ کی ٹوکری خالی ہے۔</div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 space-y-4">
+                                {cart.map(item => (
+                                    <div key={item.id} className="bg-white p-4 rounded-lg shadow-sm flex items-center border">
+                                        <img src={item.image} className="w-20 h-20 object-cover rounded-md" />
+                                        <div className="mr-4 flex-1 text-right">
+                                            <h3 className="font-bold">{item.name}</h3>
+                                            <div className="flex items-center mt-2 justify-end">
+                                                <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 border rounded flex items-center justify-center"><i className="fas fa-plus"></i></button>
+                                                <span className="px-4">{item.quantity}</span>
+                                                <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 border rounded flex items-center justify-center"><i className="fas fa-minus"></i></button>
+                                            </div>
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-emerald-700">{formatPrice(item.price * item.quantity)}</p>
+                                            <button onClick={() => removeFromCart(item.id)} className="text-red-500 mt-2"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow-sm border h-fit">
+                                <h2 className="font-bold text-xl mb-4">آرڈر کی تفصیل</h2>
+                                <div className="flex justify-between mb-2"><span>سامان کی قیمت:</span><span>{formatPrice(getCartSubtotal())}</span></div>
+                                <div className="flex justify-between mb-4 text-emerald-600"><span>ڈلیوری چارجز:</span><span>+{formatPrice(DELIVERY_CHARGE)}</span></div>
+                                <div className="border-t pt-4 flex justify-between font-bold text-xl"><span>کل رقم:</span><span>{formatPrice(getGrandTotal())}</span></div>
+                                <button onClick={() => setView('checkout')} className="w-full bg-emerald-600 text-white py-3 rounded-lg mt-6 font-bold">آرڈر مکمل کریں</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen text-right">
+                    <Navbar />
+                    {toastMessage && (
+                        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-800 text-white px-6 py-3 rounded-full shadow-lg text-center">
+                            {toastMessage}
+                        </div>
+                    )}
+                    <main>
+                        {view === 'home' && <HomeView />}
+                        {view === 'admin' && <AdminView />}
+                        {view === 'cart' && <CartView />}
+                        {view === 'checkout' && (
+                            <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+                                <h1 className="text-2xl font-bold mb-4">چیک آؤٹ</h1>
+                                <p className="mb-8">آرڈر کنفرم کرنے کے لیے نیچے بٹن دبائیں (کیش آن ڈلیوری)</p>
+                                <button onClick={() => setView('success')} className="bg-emerald-600 text-white px-10 py-4 rounded-lg font-bold text-xl">آرڈر کنفرم کریں</button>
+                            </div>
+                        )}
+                        {view === 'success' && (
+                            <div className="max-w-md mx-auto px-4 py-20 text-center">
+                                <i className="fas fa-check-circle text-6xl text-emerald-500 mb-6 block"></i>
+                                <h1 className="text-3xl font-bold mb-4">شکریہ!</h1>
+                                <p className="text-gray-600 mb-8">آپ کا آرڈر موصول ہو گیا ہے۔ جلد ہی آپ سے رابطہ کیا جائے گا۔</p>
+                                <button onClick={() => {setCart([]); setView('home');}} className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold">ہوم پیج پر جائیں</button>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
