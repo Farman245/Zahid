@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New Qari Hosiery Store</title>
+    <title>New Qari Hosiery Store | Premium Quality</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -11,6 +11,12 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+        .animate-menu { animation: slideIn 0.3s ease-out; }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans">
     <div id="root"></div>
@@ -26,53 +32,193 @@
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const categories = ['All', 'Vests', 'Caps', 'Trousers', 'Undergarments', 'Accessories'];
 
         function App() {
             const [view, setView] = useState('home');
             const [products, setProducts] = useState([]);
+            const [cart, setCart] = useState([]);
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [selectedCategory, setSelectedCategory] = useState('All');
             const [isLoading, setIsLoading] = useState(true);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [secretClicks, setSecretClicks] = useState(0);
 
             useEffect(() => {
-                db.collection("products").onSnapshot(snap => {
+                const unsubscribe = db.collection("products").onSnapshot(snap => {
                     setProducts(snap.docs.map(doc => ({id: doc.id, ...doc.data()})));
                     setIsLoading(false);
                 });
+                return () => unsubscribe();
             }, []);
+
+            const handleSecret = () => {
+                setSecretClicks(prev => {
+                    if (prev + 1 >= 3) { setView('admin'); return 0; }
+                    return prev + 1;
+                });
+                setTimeout(() => setSecretClicks(0), 2000);
+            };
+
+            const Navbar = () => (
+                <nav className="bg-emerald-800 text-white p-4 sticky top-0 z-50 shadow-lg flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setIsMenuOpen(true)} className="p-2"><i className="fas fa-bars text-xl"></i></button>
+                        <h1 className="font-bold text-lg cursor-pointer select-none" onClick={handleSecret}>New Qari Hosiery</h1>
+                    </div>
+                    <button onClick={() => setView('cart')} className="relative p-2">
+                        <i className="fas fa-shopping-bag text-2xl"></i>
+                        {cart.length > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-emerald-800">{cart.reduce((a,b)=>a+b.quantity,0)}</span>}
+                    </button>
+                </nav>
+            );
+
+            // --- Home View ---
+            const Home = () => (
+                <div>
+                    <div className="relative h-64 bg-emerald-900 flex items-center justify-center text-center px-6">
+                        <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1558769132-cb1fac0840f2?auto=format&fit=crop&w=800')] bg-cover bg-center"></div>
+                        <div className="relative z-10 text-white">
+                            <span className="bg-emerald-500/20 text-emerald-300 px-4 py-1 rounded-full text-xs font-bold border border-emerald-500/30 mb-4 inline-block backdrop-blur-sm">Premium Quality</span>
+                            <h2 className="text-3xl font-black mb-2 tracking-tight uppercase">Qari Hosiery Store</h2>
+                            <p className="text-emerald-100 text-sm">Wholesale & Retail Market, Faisalabad</p>
+                        </div>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
+                        {isLoading ? <p className="col-span-full text-center py-20 font-bold text-gray-400">Loading Collection...</p> : 
+                         products.filter(p => selectedCategory === 'All' || p.category === selectedCategory).map(p => (
+                            <div key={p.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group transition-all active:scale-95">
+                                <img src={p.image} className="w-full h-44 object-cover" />
+                                <div className="p-4 flex-1 flex flex-col">
+                                    <h3 className="font-bold text-sm text-gray-800 mb-1 line-clamp-1">{p.name}</h3>
+                                    <p className="text-emerald-800 font-black text-xl mb-4">Rs. {p.price}</p>
+                                    <button onClick={() => {
+                                        setCart(prev => {
+                                            const ex = prev.find(i => i.id === p.id);
+                                            if(ex) return prev.map(i => i.id === p.id ? {...i, quantity: i.quantity + 1} : i);
+                                            return [...prev, {...p, quantity: 1}];
+                                        });
+                                    }} className="mt-auto w-full bg-emerald-800 text-white py-3 rounded-2xl text-xs font-black shadow-lg">Add to Cart</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            // --- Admin Panel ---
+            const AdminPanel = () => {
+                const [pForm, setPForm] = useState({ name: '', price: '', category: 'Vests', description: '' });
+                const [imgFile, setImgFile] = useState(null);
+                const [isSaving, setIsSaving] = useState(false);
+
+                const saveProduct = async (e) => {
+                    e.preventDefault();
+                    setIsSaving(true);
+                    try {
+                        let imgUrl = "";
+                        if (imgFile) {
+                            const reader = new FileReader();
+                            reader.readAsDataURL(imgFile);
+                            imgUrl = await new Promise(res => {
+                                reader.onload = (ev) => {
+                                    const img = new Image();
+                                    img.src = ev.target.result;
+                                    img.onload = () => {
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = 600; canvas.height = 600;
+                                        canvas.getContext('2d').drawImage(img, 0, 0, 600, 600);
+                                        res(canvas.toDataURL('image/jpeg', 0.6));
+                                    }
+                                }
+                            });
+                        }
+                        await db.collection("products").add({ ...pForm, price: Number(pForm.price), image: imgUrl });
+                        alert("Product Added!");
+                        setPForm({ name: '', price: '', category: 'Vests', description: '' });
+                    } catch (err) { alert("Error saving product"); }
+                    setIsSaving(false);
+                };
+
+                if(!isAdmin) return (
+                    <div className="p-10 text-center flex flex-col items-center">
+                        <i className="fas fa-lock text-5xl text-gray-300 mb-4"></i>
+                        <h2 className="text-2xl font-bold mb-6">Admin Access</h2>
+                        <input type="password" placeholder="Enter PIN" className="border-2 p-4 rounded-2xl w-full max-w-xs text-center text-2xl tracking-widest outline-none focus:border-emerald-600" onChange={e => e.target.value === '7860' && setIsAdmin(true)} />
+                    </div>
+                );
+
+                return (
+                    <div className="p-6 max-w-xl mx-auto">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold">Manage Products</h2>
+                            <button onClick={()=>setIsAdmin(false)} className="text-red-500 font-bold">Logout</button>
+                        </div>
+                        <form className="space-y-4 bg-white p-6 rounded-3xl shadow-sm border" onSubmit={saveProduct}>
+                            <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-xl outline-none" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
+                            <input required type="number" placeholder="Price (PKR)" className="w-full p-4 bg-gray-50 rounded-xl outline-none" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
+                            <select className="w-full p-4 bg-gray-50 rounded-xl outline-none" value={pForm.category} onChange={e=>setPForm({...pForm, category:e.target.value})}>
+                                {categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input type="file" required accept="image/*" className="w-full p-4 bg-gray-50 rounded-xl outline-none" onChange={e=>setImgFile(e.target.files[0])} />
+                            <textarea placeholder="Description" className="w-full p-4 bg-gray-50 rounded-xl outline-none" rows="3" value={pForm.description} onChange={e=>setPForm({...pForm, description:e.target.value})}></textarea>
+                            <button disabled={isSaving} className="w-full bg-emerald-800 text-white py-4 rounded-xl font-bold shadow-lg disabled:bg-gray-400">
+                                {isSaving ? "Uploading..." : "Save Product"}
+                            </button>
+                        </form>
+                    </div>
+                );
+            };
 
             return (
                 <div className="min-h-screen">
-                    <nav className="bg-emerald-800 text-white p-4 shadow-lg sticky top-0 z-50 flex justify-between items-center">
-                        <h1 className="font-bold text-xl">New Qari Hosiery Store</h1>
-                        <button onClick={() => setView('home')} className="hover:text-emerald-200">Home</button>
-                    </nav>
-
-                    {view === 'home' && (
-                        <div>
-                            {/* Hero Section with Background */}
-                            <div className="relative h-[400px] flex items-center justify-center text-center text-white">
-                                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?q=80&w=1920&auto=format&fit=crop')] bg-cover bg-center">
-                                    <div className="absolute inset-0 bg-black/60"></div>
+                    <Navbar />
+                    {/* Mobile Sidebar */}
+                    {isMenuOpen && (
+                        <div className="fixed inset-0 z-[60] flex">
+                            <div className="bg-black/50 flex-1" onClick={() => setIsMenuOpen(false)}></div>
+                            <div className="bg-white w-72 p-6 animate-menu shadow-2xl flex flex-col">
+                                <div className="flex justify-between items-center mb-10">
+                                    <h3 className="font-bold text-xl text-emerald-800">Shop Menu</h3>
+                                    <button onClick={() => setIsMenuOpen(false)}><i className="fas fa-times text-gray-400"></i></button>
                                 </div>
-                                <div className="relative z-10 px-6">
-                                    <h2 className="text-4xl md:text-6xl font-black mb-4 uppercase tracking-tighter">Welcome to Qari Hosiery</h2>
-                                    <p className="text-lg md:text-2xl text-emerald-300 font-medium">Your Premium Destination for Quality Wholesale & Retail</p>
-                                    <button onClick={() => window.scrollTo({top: 450, behavior: 'smooth'})} className="mt-8 bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-full font-bold shadow-xl transition-all">Start Shopping</button>
-                                </div>
-                            </div>
-
-                            {/* Products Section */}
-                            <div className="max-w-7xl mx-auto p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-                                {isLoading ? <p className="col-span-full text-center py-20 text-gray-400 font-bold">Connecting to Store...</p> : 
-                                 products.map(p => (
-                                    <div key={p.id} className="bg-white rounded-3xl shadow-sm border overflow-hidden">
-                                        <img src={p.image} className="w-full h-48 object-cover" />
-                                        <div className="p-4">
-                                            <h3 className="font-bold text-gray-800">{p.name}</h3>
-                                            <p className="text-emerald-700 font-black text-xl mt-2">Rs. {p.price}</p>
-                                        </div>
+                                <div className="space-y-4 flex-1">
+                                    <button className="w-full text-left p-4 rounded-2xl hover:bg-emerald-50 font-bold transition-all" onClick={() => {setView('home'); setIsMenuOpen(false);}}>Home</button>
+                                    <div className="pt-6 border-t mt-6">
+                                        <p className="text-gray-400 text-[10px] font-black uppercase mb-4 tracking-widest px-4">Categories</p>
+                                        {categories.map(c => (
+                                            <button key={c} className={`w-full text-left p-4 rounded-2xl mb-1 font-semibold ${selectedCategory === c ? 'bg-emerald-800 text-white' : 'hover:bg-emerald-50'}`} onClick={() => {setSelectedCategory(c); setView('home'); setIsMenuOpen(false);}}>{c}</button>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
                             </div>
+                        </div>
+                    )}
+
+                    {view === 'home' && <Home />}
+                    {view === 'admin' && <AdminPanel />}
+                    {view === 'cart' && (
+                        <div className="p-6 max-w-2xl mx-auto py-10">
+                            <h2 className="text-3xl font-black mb-8">Your Cart</h2>
+                            {cart.length === 0 ? <p className="text-center py-20 text-gray-400">Your bag is empty.</p> : (
+                                <div className="space-y-4">
+                                    {cart.map(item => (
+                                        <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border flex items-center gap-4">
+                                            <img src={item.image} className="w-16 h-16 rounded-xl object-cover" />
+                                            <div className="flex-1"><p className="font-bold">{item.name}</p><p className="text-emerald-700 font-bold">Rs. {item.price} x {item.quantity}</p></div>
+                                            <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} className="text-red-400 p-2"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    ))}
+                                    <div className="bg-emerald-900 text-white p-8 rounded-3xl shadow-xl mt-10">
+                                        <div className="flex justify-between text-2xl font-black"><span>Total Bill</span><span>Rs. {cart.reduce((a,b)=>a+(b.price*b.quantity), 0) + 250}</span></div>
+                                        <button className="w-full bg-white text-emerald-900 py-4 rounded-2xl mt-6 font-black" onClick={() => {
+                                            const msg = `*New Order Received!*%0A%0A*Items:*%0A${cart.map(i => `- ${i.name} x${i.quantity}`).join('%0A')}%0A%0A*Total:* Rs. ${cart.reduce((a,b)=>a+(b.price*b.quantity), 0) + 250}`;
+                                            window.open(`https://wa.me/923065378112?text=${msg}`);
+                                            setCart([]); setView('home');
+                                        }}>Order via WhatsApp</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
