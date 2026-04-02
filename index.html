@@ -49,7 +49,9 @@
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const categories = ['All', 'Vests', 'Caps', 'Trousers', 'Undergarments', 'Accessories'];
+        
+        // Added 'Socks' to categories
+        const categories = ['All', 'Socks', 'Vests', 'Caps', 'Trousers', 'Undergarments', 'Accessories'];
 
         function App() {
             const [view, setView] = useState('home');
@@ -97,6 +99,7 @@
                 const p = selectedProduct;
                 const [qty, setQty] = useState(1);
                 const currentPrice = calculatePrice(p, qty);
+                const isOutOfStock = p.inStock === false;
 
                 return (
                     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
@@ -108,7 +111,11 @@
                                 </div>
                                 <button onClick={() => setSelectedProduct(null)} className="bg-gray-100 p-2 rounded-full"><i className="fas fa-times"></i></button>
                             </div>
-                            <img src={p.image} className="w-full h-64 object-cover rounded-3xl mb-6 shadow-sm" />
+                            
+                            <div className="relative">
+                                <img src={p.image} className={`w-full h-64 object-cover rounded-3xl mb-6 shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
+                                {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center"><span className="bg-red-600 text-white px-6 py-2 font-black tracking-widest text-xl transform -rotate-12 rounded-xl border-4 border-white shadow-xl">OUT OF STOCK</span></div>}
+                            </div>
                             
                             <div className="space-y-6">
                                 <div>
@@ -134,24 +141,26 @@
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between pt-4 border-t">
-                                    <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl">
-                                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 bg-white rounded-xl shadow-sm">-</button>
-                                        <span className="font-black w-8 text-center text-lg">{qty}</span>
-                                        <button onClick={() => setQty(qty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
+                                {!isOutOfStock && (
+                                    <div className="flex items-center justify-between pt-4 border-t">
+                                        <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl">
+                                            <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 bg-white rounded-xl shadow-sm">-</button>
+                                            <span className="font-black w-8 text-center text-lg">{qty}</span>
+                                            <button onClick={() => setQty(qty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-400 font-bold uppercase">Total Price</p>
+                                            <p className="text-2xl font-black text-emerald-800">Rs. {currentPrice * qty}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xs text-gray-400 font-bold uppercase">Total Price</p>
-                                        <p className="text-2xl font-black text-emerald-800">Rs. {currentPrice * qty}</p>
-                                    </div>
-                                </div>
+                                )}
 
-                                <button onClick={() => {
+                                <button disabled={isOutOfStock} onClick={() => {
                                     setCart(prev => [...prev, { ...p, quantity: qty, finalPrice: currentPrice }]);
                                     setSelectedProduct(null);
                                     if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * qty, currency: 'PKR'});
-                                }} className="w-full bg-emerald-800 text-white py-5 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-transform">
-                                    Add to Cart
+                                }} className={`w-full py-5 rounded-3xl font-black text-lg shadow-xl active:scale-95 transition-transform ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-emerald-800 text-white hover:bg-emerald-900'}`}>
+                                    {isOutOfStock ? 'Currently Unavailable' : 'Add to Cart'}
                                 </button>
                             </div>
                         </div>
@@ -160,7 +169,7 @@
             };
 
             const AdminPanel = () => {
-                const [pForm, setPForm] = useState({ name: '', itemCode: '', price: '', unit: '', category: 'Vests', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '' });
+                const [pForm, setPForm] = useState({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
                 const [editId, setEditId] = useState(null);
                 const [imgFile, setImgFile] = useState(null);
                 const [isSaving, setIsSaving] = useState(false);
@@ -178,12 +187,13 @@
                             });
                         }
                         
-                        // Auto-generate code if empty
                         const finalCode = pForm.itemCode || Math.floor(1000 + Math.random() * 9000).toString();
+                        const finalSold = pForm.fakeSold || (Math.floor(100 + Math.random() * 800).toString() + "+");
 
                         const finalData = { 
                             ...pForm, 
                             itemCode: finalCode,
+                            fakeSold: finalSold,
                             price: Number(pForm.price), 
                             bulkQty: pForm.bulkQty ? Number(pForm.bulkQty) : null,
                             bulkPrice: pForm.bulkPrice ? Number(pForm.bulkPrice) : null,
@@ -193,11 +203,20 @@
                         if (editId) await db.collection("products").doc(editId).update(finalData);
                         else await db.collection("products").add(finalData);
                         
-                        alert("Product Saved Successfully!");
+                        alert("Product Saved!");
                         setEditId(null); 
-                        setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Vests', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '' });
+                        setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
+                        setImgFile(null);
                     } catch (err) { alert("Error saving product"); }
                     setIsSaving(false);
+                };
+
+                const editProduct = (p) => {
+                    setEditId(p.id);
+                    setPForm({
+                        name: p.name || '', itemCode: p.itemCode || '', price: p.price || '', unit: p.unit || '', category: p.category || 'Socks', description: p.description || '', sizes: p.sizes || '', colors: p.colors || '', bulkQty: p.bulkQty || '', bulkPrice: p.bulkPrice || '', inStock: p.inStock !== false, fakeSold: p.fakeSold || ''
+                    });
+                    window.scrollTo(0,0);
                 };
 
                 if(!isAdmin) return (
@@ -211,52 +230,65 @@
                     <div className="p-6 max-w-2xl mx-auto space-y-8">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-black text-emerald-800">{editId ? "Edit Product" : "Add New Product"}</h2>
-                            <button onClick={()=>setIsAdmin(false)} className="text-red-500 font-bold">Logout</button>
+                            <button onClick={()=>setIsAdmin(false)} className="text-red-500 font-bold bg-red-50 px-4 py-2 rounded-xl">Logout</button>
                         </div>
                         
                         <form className="space-y-6 bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100" onSubmit={saveProduct}>
+                            
+                            {/* Stock & Marketing Status */}
+                            <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-200 grid grid-cols-2 gap-4 items-center">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input type="checkbox" checked={pForm.inStock} onChange={e=>setPForm({...pForm, inStock: e.target.checked})} className="w-6 h-6 accent-emerald-600 rounded" />
+                                    <span className={`font-black ${pForm.inStock ? 'text-emerald-700' : 'text-red-600'}`}>{pForm.inStock ? "Item In Stock" : "Out of Stock"}</span>
+                                </label>
+                                <div>
+                                    <input placeholder="Fake Sold Qty (e.g. 500+)" className="w-full p-3 bg-white rounded-xl outline-none border border-yellow-300 text-sm font-bold" value={pForm.fakeSold} onChange={e=>setPForm({...pForm, fakeSold:e.target.value})} />
+                                    <p className="text-[9px] text-gray-500 mt-1">Leave empty for random numbers</p>
+                                </div>
+                            </div>
+
                             <div className="space-y-4">
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-2">Basic Info</label>
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="col-span-2">
-                                        <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
+                                        <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
                                     </div>
                                     <div className="col-span-1">
-                                        <input placeholder="Code (e.g. A-101)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500 font-bold" value={pForm.itemCode} onChange={e=>setPForm({...pForm, itemCode:e.target.value})} />
+                                        <input placeholder="Code (A-101)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500 font-bold" value={pForm.itemCode} onChange={e=>setPForm({...pForm, itemCode:e.target.value})} />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
-                                    <input required placeholder="Unit (e.g. 1 Dozen)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.unit} onChange={e=>setPForm({...pForm, unit:e.target.value})} />
+                                    <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
+                                    <input required placeholder="Unit (e.g. Dozen)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500" value={pForm.unit} onChange={e=>setPForm({...pForm, unit:e.target.value})} />
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-2">Variations</label>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input placeholder="Sizes (e.g. S, M, L)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.sizes} onChange={e=>setPForm({...pForm, sizes:e.target.value})} />
-                                    <input placeholder="Colors (e.g. Black, White)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.colors} onChange={e=>setPForm({...pForm, colors:e.target.value})} />
+                                    <input placeholder="Sizes (e.g. S, M, L)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500" value={pForm.sizes} onChange={e=>setPForm({...pForm, sizes:e.target.value})} />
+                                    <input placeholder="Colors (e.g. Black, White)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500" value={pForm.colors} onChange={e=>setPForm({...pForm, colors:e.target.value})} />
                                 </div>
                             </div>
 
                             <div className="bg-emerald-50 p-6 rounded-[2rem] space-y-4 border border-emerald-100">
                                 <label className="block text-xs font-black text-emerald-700 uppercase tracking-widest">Wholesale Pricing</label>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input type="number" placeholder="Bulk Qty (e.g. 10)" className="w-full p-4 bg-white rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.bulkQty} onChange={e=>setPForm({...pForm, bulkQty:e.target.value})} />
-                                    <input type="number" placeholder="Bulk Price (e.g. 450)" className="w-full p-4 bg-white rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.bulkPrice} onChange={e=>setPForm({...pForm, bulkPrice:e.target.value})} />
+                                    <input type="number" placeholder="Bulk Qty (e.g. 10)" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-emerald-500" value={pForm.bulkQty} onChange={e=>setPForm({...pForm, bulkQty:e.target.value})} />
+                                    <input type="number" placeholder="Bulk Price (e.g. 450)" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-emerald-500" value={pForm.bulkPrice} onChange={e=>setPForm({...pForm, bulkPrice:e.target.value})} />
                                 </div>
                             </div>
 
                             <div className="space-y-4">
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-2">Details & Image</label>
-                                <textarea placeholder="Product Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 border border-transparent focus:border-emerald-500" value={pForm.description} onChange={e=>setPForm({...pForm, description:e.target.value})} />
-                                <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none border border-transparent focus:border-emerald-500" value={pForm.category} onChange={e=>setPForm({...pForm, category:e.target.value})}>
+                                <textarea placeholder="Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-emerald-500" value={pForm.description} onChange={e=>setPForm({...pForm, description:e.target.value})} />
+                                <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-emerald-500 font-bold" value={pForm.category} onChange={e=>setPForm({...pForm, category:e.target.value})}>
                                     {categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
-                                <input type="file" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" onChange={e=>setImgFile(e.target.files[0])} />
+                                <input type="file" className="block w-full p-2 bg-gray-50 rounded-2xl text-sm" onChange={e=>setImgFile(e.target.files[0])} />
                             </div>
 
-                            <button disabled={isSaving} className="w-full bg-emerald-800 text-white py-5 rounded-[1.5rem] font-black shadow-xl hover:bg-emerald-900 transition-colors active:scale-95">
+                            <button disabled={isSaving} className="w-full bg-emerald-800 text-white py-5 rounded-[1.5rem] font-black shadow-xl hover:bg-emerald-900 active:scale-95">
                                 {isSaving ? "Saving..." : (editId ? "Update Product" : "Save Product")}
                             </button>
                         </form>
@@ -264,18 +296,18 @@
                         <div className="space-y-3 pt-8">
                             <h3 className="font-bold text-gray-400 text-xs uppercase px-2">Inventory ({products.length})</h3>
                             {products.map(p => (
-                                <div key={p.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm">
+                                <div key={p.id} className={`bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm ${p.inStock===false?'opacity-60':''}`}>
                                     <div className="flex items-center gap-4">
                                         <img src={p.image} className="w-12 h-12 rounded-xl object-cover" />
                                         <div>
-                                            <p className="font-bold text-sm">{p.name}</p>
+                                            <p className="font-bold text-sm">{p.name} {p.inStock===false && <span className="text-[10px] text-red-500 font-black ml-1">(OUT)</span>}</p>
                                             <p className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-500 font-bold inline-block mr-2">{p.itemCode || p.id.slice(0,4)}</p>
                                             <span className="text-xs font-bold text-emerald-700">Rs. {p.price}</span>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={()=>{setPForm(p); setEditId(p.id); window.scrollTo(0,0);}} className="text-blue-500 p-2"><i className="fas fa-edit"></i></button>
-                                        <button onClick={() => confirm("Delete this product?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2"><i className="fas fa-trash"></i></button>
+                                        <button onClick={()=>editProduct(p)} className="text-blue-500 p-2 bg-blue-50 rounded-full"><i className="fas fa-edit"></i></button>
+                                        <button onClick={() => confirm("Delete this product?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2 bg-red-50 rounded-full"><i className="fas fa-trash"></i></button>
                                     </div>
                                 </div>
                             ))}
@@ -310,20 +342,34 @@
                             </div>
                             <div className="p-6 -mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-7xl mx-auto">
                                 {isLoading ? <p className="col-span-full text-center py-20 font-bold opacity-30 italic">Loading Collection...</p> : 
-                                 products.filter(p => selectedCategory === 'All' || p.category === selectedCategory).map(p => (
-                                    <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white rounded-[2rem] shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer hover:shadow-2xl transition-all relative">
-                                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-emerald-900 shadow-sm">
+                                 products.filter(p => selectedCategory === 'All' || p.category === selectedCategory).map(p => {
+                                    const isOutOfStock = p.inStock === false;
+                                    return (
+                                    <div key={p.id} onClick={() => setSelectedProduct(p)} className={`bg-white rounded-[2rem] shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer hover:shadow-2xl transition-all relative ${isOutOfStock ? 'opacity-70 grayscale' : ''}`}>
+                                        
+                                        {/* Fake Sold Badge */}
+                                        <div className="absolute top-3 right-3 bg-red-100 text-red-700 px-2 py-1 rounded-lg text-[10px] font-black shadow-sm z-10 flex items-center gap-1 border border-red-200">
+                                            <i className="fas fa-fire"></i> {p.fakeSold} Sold
+                                        </div>
+
+                                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black text-emerald-900 shadow-sm z-10 border">
                                             {p.itemCode || p.id.slice(0,4)}
                                         </div>
+
+                                        {/* Out of stock overlay */}
+                                        {isOutOfStock && <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center pointer-events-none"><span className="bg-red-600 text-white font-black px-4 py-1 text-sm rounded-lg transform -rotate-12 border-2 border-white shadow-lg">SOLD OUT</span></div>}
+
                                         <img src={p.image} className="w-full h-48 object-cover" />
                                         <div className="p-5 flex-1 flex flex-col">
                                             <h3 className="font-black text-gray-800 mb-1 line-clamp-1">{p.name}</h3>
                                             <p className="text-emerald-800 font-black text-xl">Rs. {p.price}</p>
                                             <p className="text-[10px] text-gray-400 font-black uppercase mb-4 tracking-wider">Per {p.unit}</p>
-                                            <button className="mt-auto w-full bg-emerald-50 text-emerald-800 py-3 rounded-2xl text-xs font-black">View Details</button>
+                                            <button className={`mt-auto w-full py-3 rounded-2xl text-xs font-black ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-800'}`}>
+                                                {isOutOfStock ? 'Out of Stock' : 'View Details'}
+                                            </button>
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         </div>
                     )}
