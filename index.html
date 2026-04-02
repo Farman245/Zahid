@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New Qari Hosiery Store | Wholesale</title>
+    <title>New Qari Hosiery Store | Faisalabad Wholesale</title>
     
     <script>
       !function(f,b,e,v,n,t,s)
@@ -20,7 +20,6 @@
     <noscript><img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=395432518120120&ev=PageView&noscript=1"
     /></noscript>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -162,10 +161,20 @@
                                 {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center"><span className="bg-red-600 text-white px-6 py-2 font-black text-xl transform -rotate-12 rounded-xl border-4 border-white shadow-xl">SOLD OUT</span></div>}
                             </div>
                             <div className="space-y-6">
+                                <div>
+                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Description</h4>
+                                    <p className="text-gray-600 leading-relaxed text-sm">{p.description || "Premium quality hosiery product from Faisalabad market."}</p>
+                                </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div><h4 className="text-xs font-black text-gray-400 uppercase mb-2">Sizes</h4><p className="font-bold text-red-600">{p.sizes || "Standard"}</p></div>
                                     <div><h4 className="text-xs font-black text-gray-400 uppercase mb-2">Colors</h4><p className="font-bold text-red-600">{p.colors || "Mixed"}</p></div>
                                 </div>
+                                {p.bulkQty && (
+                                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
+                                        <p className="text-xs font-bold text-red-700">🔥 WHOLESALE OFFER:</p>
+                                        <p className="text-sm font-medium">Buy {p.bulkQty} {p.unit} or more for <span className="font-black text-red-800">Rs. {p.bulkPrice}</span> / {p.unit}</p>
+                                    </div>
+                                )}
                                 {!isOutOfStock && (
                                     <div className="flex items-center justify-between pt-4 border-t">
                                         <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl">
@@ -174,7 +183,7 @@
                                             <button onClick={() => setQty(qty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-gray-400 font-bold uppercase">Total</p>
+                                            <p className="text-xs text-gray-400 font-bold uppercase">Total Price</p>
                                             <p className="text-2xl font-black text-red-600">Rs. {currentPrice * qty}</p>
                                         </div>
                                     </div>
@@ -186,7 +195,8 @@
                                         return [...prev, { ...p, quantity: qty, finalPrice: currentPrice }];
                                     });
                                     setSelectedProduct(null);
-                                }} className={`w-full py-5 rounded-3xl font-black text-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-red-600 text-white'}`}>
+                                    if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * qty, currency: 'PKR'});
+                                }} className={`w-full py-5 rounded-3xl font-black text-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-red-600 text-white shadow-xl hover:bg-red-700'}`}>
                                     {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                                 </button>
                             </div>
@@ -208,20 +218,26 @@
                         </div>
                         <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-7xl mx-auto py-10">
                             {isLoading ? <p className="col-span-full text-center py-20 font-medium opacity-50">Loading...</p> : 
+                             filtered.length === 0 ? <p className="col-span-full text-center py-20 font-medium opacity-50">No products found.</p> :
                              filtered.map(p => {
                                 const isOutOfStock = p.inStock === false;
                                 return (
-                                <div key={p.id} onClick={() => !isOutOfStock && setSelectedProduct(p)} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : ''}`}>
+                                <div key={p.id} onClick={() => !isOutOfStock && setSelectedProduct(p)} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
                                     <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border shadow-sm">Code: {p.itemCode || p.id.slice(0,4)}</div>
                                     <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black z-10 flex items-center gap-1 shadow-md">
                                         <i className="fas fa-fire text-[9px]"></i> {p.fakeSold || "500+"} Sold
                                     </div>
+                                    {isOutOfStock && (
+                                        <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center pointer-events-none">
+                                            <span className="bg-red-600 text-white font-black px-6 py-2 text-xl rounded-xl transform -rotate-12 border-4 border-white shadow-xl">SOLD OUT</span>
+                                        </div>
+                                    )}
                                     <img src={p.image} className="w-full h-48 object-cover" />
                                     <div className="p-5 flex-1 flex flex-col">
                                         <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{p.name}</h3>
                                         <p className="text-red-600 font-black text-xl">Rs. {p.price}</p>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase mb-4">/ {p.unit}</p>
-                                        <button className={`mt-auto w-full py-3 rounded-2xl text-xs font-black ${isOutOfStock ? 'bg-gray-200 text-gray-500' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-colors'}`}>
+                                        <button className={`mt-auto w-full py-3 rounded-2xl text-xs font-black ${isOutOfStock ? 'bg-gray-200 text-gray-500' : 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors'}`}>
                                             {isOutOfStock ? 'Out of Stock' : 'View Details'}
                                         </button>
                                     </div>
@@ -248,45 +264,111 @@
                             reader.readAsDataURL(imgFile);
                             imgUrl = await new Promise(res => { reader.onload = (ev) => res(ev.target.result); });
                         }
-                        const finalData = { ...pForm, price: Number(pForm.price), inStock: pForm.inStock, image: imgUrl };
+                        const finalCode = pForm.itemCode || Math.floor(1000 + Math.random() * 9000).toString();
+                        const finalData = { 
+                            ...pForm, 
+                            itemCode: finalCode,
+                            price: Number(pForm.price), 
+                            bulkQty: pForm.bulkQty ? Number(pForm.bulkQty) : null,
+                            bulkPrice: pForm.bulkPrice ? Number(pForm.bulkPrice) : null,
+                            inStock: pForm.inStock, 
+                            image: imgUrl 
+                        };
                         if (editId) await db.collection("products").doc(editId).update(finalData);
                         else await db.collection("products").add(finalData);
-                        alert("Done!"); setEditId(null); setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
-                    } catch (err) { alert("Error"); }
+                        alert("Product Saved Successfully!"); 
+                        setEditId(null); 
+                        setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
+                        setImgFile(null);
+                    } catch (err) { alert("Error saving product!"); }
                     setIsSaving(false);
+                };
+
+                const editProduct = (p) => {
+                    setEditId(p.id);
+                    setPForm({
+                        name: p.name || '', itemCode: p.itemCode || '', price: p.price || '', unit: p.unit || '', category: p.category || 'Socks', description: p.description || '', sizes: p.sizes || '', colors: p.colors || '', bulkQty: p.bulkQty || '', bulkPrice: p.bulkPrice || '', inStock: p.inStock !== false, fakeSold: p.fakeSold || ''
+                    });
+                    window.scrollTo(0,0);
                 };
 
                 if(!isAdmin) return (
                     <div className="p-10 text-center flex flex-col items-center mt-20">
                         <i className="fas fa-lock text-5xl text-gray-300 mb-6"></i>
                         <h2 className="text-2xl font-bold mb-8">Admin Login</h2>
-                        <input type="password" placeholder="Enter Secret PIN" className="border-2 p-4 rounded-2xl w-full max-w-xs text-center text-2xl outline-none focus:border-red-500 shadow-sm" onChange={e => e.target.value === '7860' && setIsAdmin(true)} />
+                        <input type="password" placeholder="Enter Secret PIN" className="border-2 p-4 rounded-2xl w-full max-w-xs text-center text-2xl outline-none focus:border-red-500 shadow-sm tracking-widest" onChange={e => e.target.value === '7860' && setIsAdmin(true)} />
                     </div>
                 );
 
                 return (
                     <div className="p-6 max-w-2xl mx-auto space-y-8 py-10">
-                        <div className="flex justify-between items-center"><h2 className="text-2xl font-black">Admin Panel</h2><button onClick={()=>setIsAdmin(false)} className="text-red-600 font-bold">Logout</button></div>
-                        <form className="space-y-4 bg-white p-6 rounded-3xl shadow-lg border" onSubmit={saveProduct}>
-                            <input required placeholder="Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-black text-gray-900">{editId ? "Edit Product" : "Add New Product"}</h2>
+                            <button onClick={()=>setIsAdmin(false)} className="text-red-600 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl">Logout</button>
+                        </div>
+                        
+                        {/* THIS IS THE FULL RESTORED FORM */}
+                        <form className="space-y-6 bg-white p-8 rounded-3xl shadow-lg border border-gray-100" onSubmit={saveProduct}>
+                            <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
+                            
                             <div className="grid grid-cols-2 gap-4">
-                                <input placeholder="Price" className="p-4 bg-gray-50 rounded-2xl outline-none" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
-                                <input placeholder="Unit" className="p-4 bg-gray-50 rounded-2xl outline-none" value={pForm.unit} onChange={e=>setPForm({...pForm, unit:e.target.value})} />
+                                <input placeholder="Item Code (e.g. A-101)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold" value={pForm.itemCode} onChange={e=>setPForm({...pForm, itemCode:e.target.value})} />
+                                <input placeholder="Fake Sold Count (e.g. 500+)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.fakeSold} onChange={e=>setPForm({...pForm, fakeSold:e.target.value})} />
                             </div>
-                            <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer">
-                                <input type="checkbox" checked={pForm.inStock} onChange={e=>setPForm({...pForm, inStock: e.target.checked})} className="w-6 h-6 accent-red-600" />
-                                <span className="font-bold">Item Available in Stock</span>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
+                                <input required placeholder="Unit (e.g. Dozen)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.unit} onChange={e=>setPForm({...pForm, unit:e.target.value})} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <input placeholder="Sizes (e.g. S, M, L)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.sizes} onChange={e=>setPForm({...pForm, sizes:e.target.value})} />
+                                <input placeholder="Colors (e.g. Black, White)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.colors} onChange={e=>setPForm({...pForm, colors:e.target.value})} />
+                            </div>
+
+                            <div className="bg-red-50 p-6 rounded-[2rem] space-y-4 border border-red-100">
+                                <label className="block text-xs font-black text-red-700 uppercase tracking-widest">Wholesale Pricing</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input type="number" placeholder="Bulk Qty (e.g. 10)" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={pForm.bulkQty} onChange={e=>setPForm({...pForm, bulkQty:e.target.value})} />
+                                    <input type="number" placeholder="Bulk Price (e.g. 450)" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={pForm.bulkPrice} onChange={e=>setPForm({...pForm, bulkPrice:e.target.value})} />
+                                </div>
+                            </div>
+
+                            <textarea placeholder="Product Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-red-500" value={pForm.description} onChange={e=>setPForm({...pForm, description:e.target.value})} />
+
+                            <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold text-gray-700" value={pForm.category} onChange={e=>setPForm({...pForm, category:e.target.value})}>
+                                {categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}
+                            </select>
+
+                            <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer border border-gray-200">
+                                <input type="checkbox" checked={pForm.inStock} onChange={e=>setPForm({...pForm, inStock: e.target.checked})} className="w-6 h-6 accent-red-600 rounded" />
+                                <span className={`font-bold ${pForm.inStock ? 'text-gray-700' : 'text-red-600'}`}>{pForm.inStock ? "Item In Stock (Available)" : "Mark as Out of Stock"}</span>
                             </label>
-                            <input type="file" className="w-full p-2" onChange={e=>setImgFile(e.target.files[0])} />
-                            <button className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg">Save Product</button>
+
+                            <input type="file" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700" onChange={e=>setImgFile(e.target.files[0])} />
+                            
+                            <button disabled={isSaving} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700">
+                                {isSaving ? "Saving..." : (editId ? "Update Product" : "Save Product")}
+                            </button>
+                            
+                            {editId && <button type="button" onClick={()=>{setEditId(null); setPForm({name:'',itemCode:'',price:'',unit:'',category:'Socks',description:'',sizes:'',colors:'',bulkQty:'',bulkPrice:'',inStock:true,fakeSold:''});}} className="w-full text-gray-400 font-bold text-sm">Cancel Edit</button>}
                         </form>
+                        
                         <div className="space-y-3 pt-10">
+                            <h3 className="font-bold text-gray-400 text-xs uppercase px-2">Inventory List ({products.length})</h3>
                             {products.map(p => (
-                                <div key={p.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm">
-                                    <div className="flex items-center gap-4"><img src={p.image} className="w-12 h-12 rounded-xl object-cover" /><div><p className="font-bold">{p.name}</p><p className="text-xs font-bold text-red-600">Rs. {p.price}</p></div></div>
+                                <div key={p.id} className={`bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm ${p.inStock===false?'opacity-60':''}`}>
+                                    <div className="flex items-center gap-4">
+                                        <img src={p.image} className="w-12 h-12 rounded-xl object-cover" />
+                                        <div>
+                                            <p className="font-bold text-sm text-gray-800">{p.name} {p.inStock===false && <span className="text-[10px] text-red-500 font-black ml-1">(OUT)</span>}</p>
+                                            <p className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-500 font-bold inline-block mr-2">Code: {p.itemCode || p.id.slice(0,4)}</p>
+                                            <span className="text-xs font-bold text-red-600">Rs. {p.price}</span>
+                                        </div>
+                                    </div>
                                     <div className="flex gap-2">
-                                        <button onClick={()=>{setPForm(p); setEditId(p.id); window.scrollTo(0,0);}} className="text-blue-500 p-2"><i className="fas fa-edit"></i></button>
-                                        <button onClick={() => confirm("Delete?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2"><i className="fas fa-trash"></i></button>
+                                        <button onClick={()=>editProduct(p)} className="text-blue-500 p-2 bg-blue-50 rounded-full w-10 h-10 flex items-center justify-center"><i className="fas fa-edit"></i></button>
+                                        <button onClick={() => confirm("Delete this product?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2 bg-red-50 rounded-full w-10 h-10 flex items-center justify-center"><i className="fas fa-trash-alt"></i></button>
                                     </div>
                                 </div>
                             ))}
@@ -303,20 +385,21 @@
                     {view === 'cart' && (
                         <div className="p-8 max-w-3xl mx-auto py-12">
                             <h2 className="text-4xl font-black mb-10 tracking-tighter">My Cart</h2>
-                            {cart.length === 0 ? <p className="text-center py-20 text-gray-300 font-bold">Bag is empty.</p> : (
+                            {cart.length === 0 ? <p className="text-center py-20 text-gray-300 font-bold text-2xl">Bag is empty.</p> : (
                                 <div className="space-y-4">
                                     {cart.map((item, idx) => (
                                         <div key={idx} className="bg-white p-6 rounded-3xl border flex items-center gap-6 shadow-sm relative">
+                                            <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border">Code: {item.itemCode || item.id.slice(0,4)}</div>
                                             <img src={item.image} className="w-20 h-20 rounded-2xl object-cover" />
-                                            <div className="flex-1"><p className="font-bold">{item.name}</p><p className="text-red-600 font-bold">Rs. {item.finalPrice} x {item.quantity}</p></div>
-                                            <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-300 p-2"><i className="fas fa-trash"></i></button>
+                                            <div className="flex-1"><p className="font-bold text-lg">{item.name}</p><p className="text-red-600 font-bold">Rs. {item.finalPrice} x {item.quantity}</p></div>
+                                            <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-300 p-3 bg-red-50 rounded-full"><i className="fas fa-trash"></i></button>
                                         </div>
                                     ))}
                                     <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shadow-2xl mt-12 text-center">
                                         <div className="flex justify-between text-3xl font-black mb-8"><span>Total Bill</span><span>Rs. {cart.reduce((a,b)=>a+(b.finalPrice*b.quantity), 0)}</span></div>
-                                        <button className="w-full bg-red-600 text-white py-6 rounded-2xl font-black text-xl" onClick={() => {
+                                        <button className="w-full bg-red-600 text-white py-6 rounded-2xl font-black text-xl hover:bg-red-700" onClick={() => {
                                             const total = cart.reduce((a,b)=>a+(b.finalPrice*b.quantity), 0);
-                                            const msg = `*New Order*%0A%0A*Items:*%0A${cart.map(i => `- [Code: ${i.itemCode || i.id.slice(0,4)}] ${i.name} x${i.quantity}`).join('%0A')}%0A%0A*Total:* Rs. ${total}`;
+                                            const msg = `*New Order*%0A%0A*Items:*%0A${cart.map(i => `- [Code: ${i.itemCode || i.id.slice(0,4)}] ${i.name} (Rs. ${i.finalPrice}) x${i.quantity} ${i.unit}`).join('%0A')}%0A%0A*Total:* Rs. ${total}`;
                                             window.open(`https://wa.me/923065378112?text=${msg}`);
                                             setCart([]); setView('home');
                                         }}>WhatsApp Order <i className="fab fa-whatsapp ml-2"></i></button>
@@ -326,7 +409,7 @@
                         </div>
                     )}
                     <ProductModal />
-                    <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white"><i className="fab fa-whatsapp"></i></a>
+                    <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white hover:scale-110 transition-transform"><i className="fab fa-whatsapp"></i></a>
                 </div>
             );
         }
