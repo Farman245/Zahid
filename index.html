@@ -80,8 +80,19 @@
 
             useEffect(() => {
                 const unsubscribe = db.collection("products").onSnapshot(snap => {
-                    setProducts(snap.docs.map(doc => ({id: doc.id, ...doc.data()})));
+                    const fetchedProducts = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                    setProducts(fetchedProducts);
                     setIsLoading(false);
+
+                    // Check if URL has a specific product link (e.g., ?p=XYZ)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const productId = urlParams.get('p');
+                    if (productId) {
+                        const targetProduct = fetchedProducts.find(prod => prod.id === productId);
+                        if (targetProduct) {
+                            setSelectedProduct(targetProduct);
+                        }
+                    }
                 });
                 return () => unsubscribe();
             }, []);
@@ -109,6 +120,8 @@
                             setView('home');
                             setSelectedCategory('All');
                             setSearchQuery('');
+                            // Remove product URL parameter if any
+                            window.history.pushState({}, document.title, window.location.pathname);
                             setSecretClicks(c => { if(c+1 >=3) setView('admin'); return c+1; });
                             setTimeout(()=>setSecretClicks(0), 2000);
                         }}>
@@ -166,25 +179,46 @@
                 const imageList = p.images && p.images.length > 0 ? p.images : [p.image];
 
                 const shareProduct = async () => {
-                    const currentUrl = window.location.href;
-                    const shareText = `🔥 New Arrival at Qari Hosiery Store!\n\n🛍️ ${p.name}\n💰 Price: Rs. ${p.price}\n📦 Code: ${p.itemCode || p.id.slice(0,4)}\n\n👇 Order online here:\n${currentUrl}`;
+                    // Create Direct Link
+                    const baseUrl = window.location.href.split('?')[0];
+                    const shareUrl = `${baseUrl}?p=${p.id}`;
+                    const shareText = `🔥 New Arrival at Qari Hosiery Store!\n\n🛍️ ${p.name}\n💰 Price: Rs. ${p.price}\n📦 Code: ${p.itemCode || p.id.slice(0,4)}\n\n👇 Order online directly from here:\n${shareUrl}`;
                     
-                    const shareData = {
-                        title: p.name,
-                        text: shareText,
-                        url: currentUrl
-                    };
-                    
-                    if (navigator.share) {
-                        try {
-                            await navigator.share(shareData);
-                        } catch (err) {
-                            console.log('Error sharing', err);
+                    try {
+                        // Fetch image and convert to file for Facebook/WhatsApp to read directly
+                        const response = await fetch(imageList[activeImgIndex]);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'product-image.jpg', { type: blob.type });
+
+                        const shareData = {
+                            title: p.name,
+                            text: shareText,
+                            url: shareUrl
+                        };
+
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            shareData.files = [file];
                         }
-                    } else {
-                        // Fallback for PC
-                        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
+
+                        if (navigator.share) {
+                            await navigator.share(shareData);
+                        } else {
+                            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+                        }
+                    } catch (err) {
+                        console.log('Error sharing image', err);
+                        // Fallback sharing without image file
+                        if (navigator.share) {
+                            navigator.share({ title: p.name, text: shareText, url: shareUrl });
+                        } else {
+                            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+                        }
                     }
+                };
+
+                const closeModal = () => {
+                    setSelectedProduct(null);
+                    window.history.pushState({}, document.title, window.location.pathname);
                 };
 
                 return (
@@ -196,10 +230,10 @@
                                     <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-black uppercase mt-2 inline-block">Code: {p.itemCode || p.id.slice(0,4)}</span>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={shareProduct} className="bg-blue-50 text-blue-600 p-3 rounded-full hover:bg-blue-100 transition-colors shadow-sm" title="Share">
+                                    <button onClick={shareProduct} className="bg-blue-50 text-blue-600 p-3 rounded-full hover:bg-blue-100 transition-colors shadow-sm" title="Share to Facebook / WhatsApp">
                                         <i className="fas fa-share-nodes"></i>
                                     </button>
-                                    <button onClick={() => setSelectedProduct(null)} className="bg-gray-100 text-gray-600 p-3 rounded-full hover:bg-gray-200 transition-colors shadow-sm">
+                                    <button onClick={closeModal} className="bg-gray-100 text-gray-600 p-3 rounded-full hover:bg-gray-200 transition-colors shadow-sm">
                                         <i className="fas fa-times"></i>
                                     </button>
                                 </div>
@@ -252,7 +286,7 @@
                                         if(ex) return prev.map(i => i.id === p.id ? {...i, quantity: i.quantity + qty} : i);
                                         return [...prev, { ...p, quantity: qty, finalPrice: currentPrice }];
                                     });
-                                    setSelectedProduct(null);
+                                    closeModal();
                                     if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * qty, currency: 'PKR'});
                                 }} className={`w-full py-5 rounded-3xl font-black text-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white shadow-xl hover:bg-red-700'}`}>
                                     {isOutOfStock ? 'Currently Unavailable' : 'Add to Cart'}
@@ -268,7 +302,6 @@
                     <i className="fas fa-info-circle text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">About New Qari Hosiery</h2>
                     <p className="text-gray-600 leading-relaxed text-lg">We are Faisalabad's leading wholesale specialists, providing premium quality hosiery products including socks, vests, caps, gloves, and trousers at market-competitive rates. With years of experience, we serve retailers across Pakistan with reliable delivery and top-notch customer service.</p>
-                    
                     <div className="bg-white p-6 rounded-3xl shadow-sm border inline-block text-left mt-6 max-w-md w-full">
                         <div className="flex items-start gap-4">
                             <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
@@ -276,13 +309,10 @@
                             </div>
                             <div>
                                 <p className="font-bold text-gray-800 mb-1">Our Location</p>
-                                <p className="text-gray-600 text-sm leading-relaxed">
-                                    New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad
-                                </p>
+                                <p className="text-gray-600 text-sm leading-relaxed">New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad</p>
                             </div>
                         </div>
                     </div>
-
                     <div className="pt-8">
                         <button onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery('');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-md hover:bg-red-700 transition-colors">Back to Shop</button>
                     </div>
@@ -294,7 +324,6 @@
                     <i className="fas fa-phone-alt text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">Contact Us</h2>
                     <p className="text-gray-600">Have questions? Want to place a bulk order? We are here to help!</p>
-                    
                     <div className="bg-white p-8 rounded-3xl shadow-lg border inline-block text-left space-y-5 max-w-md w-full">
                         <div className="flex items-center gap-4">
                             <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
@@ -302,17 +331,13 @@
                             </div>
                             <p className="font-bold text-gray-800 text-lg">+92 306 5378112</p>
                         </div>
-                        
                         <div className="flex items-start gap-4">
                             <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
                                 <i className="fas fa-map-marker-alt text-red-500 text-xl"></i>
                             </div>
-                            <p className="font-bold text-gray-800 leading-relaxed">
-                                New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad
-                            </p>
+                            <p className="font-bold text-gray-800 leading-relaxed">New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad</p>
                         </div>
                     </div>
-                    
                     <div className="pt-10">
                         <button onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery('');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-md hover:bg-red-700 transition-colors">Back to Shop</button>
                     </div>
@@ -323,7 +348,13 @@
                 const isOutOfStock = p.inStock === false;
                 const displayImg = p.images && p.images.length > 0 ? p.images[0] : p.image;
                 return (
-                    <div key={p.id} onClick={() => !isOutOfStock && setSelectedProduct(p)} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
+                    <div key={p.id} onClick={() => {
+                        if (!isOutOfStock) {
+                            setSelectedProduct(p);
+                            // Change URL to shareable link without reloading page
+                            window.history.pushState({}, document.title, `?p=${p.id}`);
+                        }
+                    }} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
                         <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border shadow-sm">Code: {p.itemCode || p.id.slice(0,4)}</div>
                         <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black z-10 flex items-center gap-1 shadow-md">
                             <i className="fas fa-fire text-[9px]"></i> {p.fakeSold || "500+"} Sold
