@@ -20,6 +20,7 @@
     <noscript><img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=395432518120120&ev=PageView&noscript=1"
     /></noscript>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -147,8 +148,12 @@
                 if (!selectedProduct) return null;
                 const p = selectedProduct;
                 const [qty, setQty] = useState(1);
+                const [activeImgIndex, setActiveImgIndex] = useState(0);
                 const currentPrice = calculatePrice(p, qty);
                 const isOutOfStock = p.inStock === false;
+                
+                // Handle multiple images (fallback to single image if old product)
+                const imageList = p.images && p.images.length > 0 ? p.images : [p.image];
 
                 return (
                     <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4">
@@ -160,14 +165,26 @@
                                 </div>
                                 <button onClick={() => setSelectedProduct(null)} className="bg-gray-100 p-2 rounded-full"><i className="fas fa-times"></i></button>
                             </div>
-                            <div className="relative mb-6">
-                                <img src={p.image} className={`w-full h-64 object-cover rounded-3xl shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
+                            
+                            {/* Main Image */}
+                            <div className="relative mb-4">
+                                <img src={imageList[activeImgIndex]} className={`w-full h-64 object-cover rounded-3xl shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
                                 {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center"><span className="bg-red-600 text-white px-6 py-2 font-black text-xl transform -rotate-12 rounded-xl border-4 border-white shadow-xl">SOLD OUT</span></div>}
                             </div>
+
+                            {/* Image Thumbnails (Only show if more than 1 image) */}
+                            {imageList.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-6 pb-2">
+                                    {imageList.map((img, idx) => (
+                                        <img key={idx} src={img} onClick={() => setActiveImgIndex(idx)} className={`w-16 h-16 object-cover rounded-xl cursor-pointer flex-shrink-0 border-2 transition-all ${activeImgIndex === idx ? 'border-red-600 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`} />
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="space-y-6">
                                 <div>
                                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Description</h4>
-                                    <p className="text-gray-600 leading-relaxed text-sm">{p.description || "Premium quality hosiery product from Faisalabad market."}</p>
+                                    <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-wrap">{p.description || "Premium quality hosiery product from Faisalabad market."}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-6">
                                     <div><h4 className="text-xs font-black text-gray-400 uppercase mb-2">Sizes</h4><p className="font-bold text-red-600">{p.sizes || "Standard"}</p></div>
@@ -214,21 +231,15 @@
                     <i className="fas fa-info-circle text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">About New Qari Hosiery</h2>
                     <p className="text-gray-600 leading-relaxed text-lg">We are Faisalabad's leading wholesale specialists, providing premium quality hosiery products including socks, vests, caps, gloves, and trousers at market-competitive rates. With years of experience, we serve retailers across Pakistan with reliable delivery and top-notch customer service.</p>
-                    
                     <div className="bg-white p-6 rounded-3xl shadow-sm border inline-block text-left mt-6 max-w-md w-full">
                         <div className="flex items-start gap-4">
-                            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
-                                <i className="fas fa-map-marker-alt text-red-500 text-xl"></i>
-                            </div>
+                            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0"><i className="fas fa-map-marker-alt text-red-500 text-xl"></i></div>
                             <div>
                                 <p className="font-bold text-gray-800 mb-1">Our Location</p>
-                                <p className="text-gray-600 text-sm leading-relaxed">
-                                    New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad
-                                </p>
+                                <p className="text-gray-600 text-sm leading-relaxed">New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad</p>
                             </div>
                         </div>
                     </div>
-
                     <div className="pt-8">
                         <button onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery('');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-md hover:bg-red-700 transition-colors">Back to Shop</button>
                     </div>
@@ -240,25 +251,16 @@
                     <i className="fas fa-phone-alt text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">Contact Us</h2>
                     <p className="text-gray-600">Have questions? Want to place a bulk order? We are here to help!</p>
-                    
                     <div className="bg-white p-8 rounded-3xl shadow-lg border inline-block text-left space-y-5 max-w-md w-full">
                         <div className="flex items-center gap-4">
-                            <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
-                                <i className="fab fa-whatsapp text-emerald-500 text-2xl"></i>
-                            </div>
+                            <div className="bg-emerald-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0"><i className="fab fa-whatsapp text-emerald-500 text-2xl"></i></div>
                             <p className="font-bold text-gray-800 text-lg">+92 306 5378112</p>
                         </div>
-                        
                         <div className="flex items-start gap-4">
-                            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0">
-                                <i className="fas fa-map-marker-alt text-red-500 text-xl"></i>
-                            </div>
-                            <p className="font-bold text-gray-800 leading-relaxed">
-                                New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad
-                            </p>
+                            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center shrink-0"><i className="fas fa-map-marker-alt text-red-500 text-xl"></i></div>
+                            <p className="font-bold text-gray-800 leading-relaxed">New Qari Hosiery Store, Near Mubarak Masjid, Quaid-e-Azam Market, Faisalabad</p>
                         </div>
                     </div>
-                    
                     <div className="pt-10">
                         <button onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery('');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-md hover:bg-red-700 transition-colors">Back to Shop</button>
                     </div>
@@ -281,6 +283,7 @@
                              filtered.length === 0 ? <p className="col-span-full text-center py-20 font-medium opacity-50">No products found.</p> :
                              filtered.map(p => {
                                 const isOutOfStock = p.inStock === false;
+                                const displayImg = p.images && p.images.length > 0 ? p.images[0] : p.image;
                                 return (
                                 <div key={p.id} onClick={() => !isOutOfStock && setSelectedProduct(p)} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
                                     <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border shadow-sm">Code: {p.itemCode || p.id.slice(0,4)}</div>
@@ -292,7 +295,7 @@
                                             <span className="bg-red-600 text-white font-black px-6 py-2 text-xl rounded-xl transform -rotate-12 border-4 border-white shadow-xl">SOLD OUT</span>
                                         </div>
                                     )}
-                                    <img src={p.image} className="w-full h-48 object-cover" />
+                                    <img src={displayImg} className="w-full h-48 object-cover" />
                                     <div className="p-5 flex-1 flex flex-col">
                                         <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{p.name}</h3>
                                         <p className="text-red-600 font-black text-xl">Rs. {p.price}</p>
@@ -311,19 +314,36 @@
             const AdminPanel = () => {
                 const [pForm, setPForm] = useState({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
                 const [editId, setEditId] = useState(null);
-                const [imgFile, setImgFile] = useState(null);
+                const [imgFiles, setImgFiles] = useState([]);
                 const [isSaving, setIsSaving] = useState(false);
 
                 const saveProduct = async (e) => {
                     e.preventDefault();
                     setIsSaving(true);
                     try {
-                        let imgUrl = editId ? products.find(p => p.id === editId).image : "";
-                        if (imgFile) {
-                            const reader = new FileReader();
-                            reader.readAsDataURL(imgFile);
-                            imgUrl = await new Promise(res => { reader.onload = (ev) => res(ev.target.result); });
+                        let finalImages = editId ? (products.find(p => p.id === editId).images || [products.find(p => p.id === editId).image].filter(Boolean)) : [];
+                        
+                        // Process new multiple images if selected
+                        if (imgFiles && imgFiles.length > 0) {
+                            finalImages = await Promise.all(Array.from(imgFiles).map(file => {
+                                return new Promise(res => {
+                                    const reader = new FileReader();
+                                    reader.readAsDataURL(file);
+                                    reader.onload = (ev) => {
+                                        const img = new Image();
+                                        img.src = ev.target.result;
+                                        img.onload = () => {
+                                            const canvas = document.createElement('canvas');
+                                            canvas.width = 600; canvas.height = 600;
+                                            canvas.getContext('2d').drawImage(img, 0, 0, 600, 600);
+                                            // 0.6 quality keeps size small so we can save multiple images
+                                            res(canvas.toDataURL('image/jpeg', 0.6)); 
+                                        }
+                                    }
+                                });
+                            }));
                         }
+
                         const finalCode = pForm.itemCode || Math.floor(1000 + Math.random() * 9000).toString();
                         const finalData = { 
                             ...pForm, 
@@ -332,14 +352,17 @@
                             bulkQty: pForm.bulkQty ? Number(pForm.bulkQty) : null,
                             bulkPrice: pForm.bulkPrice ? Number(pForm.bulkPrice) : null,
                             inStock: pForm.inStock, 
-                            image: imgUrl 
+                            images: finalImages,
+                            image: finalImages[0] || "" // for backward compatibility
                         };
+                        
                         if (editId) await db.collection("products").doc(editId).update(finalData);
                         else await db.collection("products").add(finalData);
+                        
                         alert("Product Saved Successfully!"); 
                         setEditId(null); 
                         setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
-                        setImgFile(null);
+                        setImgFiles([]);
                     } catch (err) { alert("Error saving product!"); }
                     setIsSaving(false);
                 };
@@ -404,9 +427,13 @@
                                 <span className={`font-bold ${pForm.inStock ? 'text-gray-700' : 'text-red-600'}`}>{pForm.inStock ? "Item In Stock (Available)" : "Mark as Out of Stock"}</span>
                             </label>
 
-                            <input type="file" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700" onChange={e=>setImgFile(e.target.files[0])} />
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Upload Images (Select Multiple)</label>
+                                <input type="file" multiple accept="image/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 cursor-pointer" onChange={e=>setImgFiles(e.target.files)} />
+                                {imgFiles.length > 0 && <p className="text-xs text-emerald-600 font-bold mt-2">{imgFiles.length} images selected</p>}
+                            </div>
                             
-                            <button disabled={isSaving} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700">
+                            <button disabled={isSaving} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700 active:scale-95 transition-transform">
                                 {isSaving ? "Saving..." : (editId ? "Update Product" : "Save Product")}
                             </button>
                             
@@ -415,10 +442,12 @@
                         
                         <div className="space-y-3 pt-10">
                             <h3 className="font-bold text-gray-400 text-xs uppercase px-2">Inventory List ({products.length})</h3>
-                            {products.map(p => (
+                            {products.map(p => {
+                                const displayImg = p.images && p.images.length > 0 ? p.images[0] : p.image;
+                                return (
                                 <div key={p.id} className={`bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm ${p.inStock===false?'opacity-60':''}`}>
                                     <div className="flex items-center gap-4">
-                                        <img src={p.image} className="w-12 h-12 rounded-xl object-cover" />
+                                        <img src={displayImg} className="w-12 h-12 rounded-xl object-cover" />
                                         <div>
                                             <p className="font-bold text-sm text-gray-800">{p.name} {p.inStock===false && <span className="text-[10px] text-red-500 font-black ml-1">(OUT)</span>}</p>
                                             <p className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-500 font-bold inline-block mr-2">Code: {p.itemCode || p.id.slice(0,4)}</p>
@@ -430,7 +459,7 @@
                                         <button onClick={() => confirm("Delete this product?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2 bg-red-50 rounded-full w-10 h-10 flex items-center justify-center"><i className="fas fa-trash-alt"></i></button>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 );
@@ -449,14 +478,16 @@
                             <h2 className="text-4xl font-black mb-10 tracking-tighter">My Cart</h2>
                             {cart.length === 0 ? <p className="text-center py-20 text-gray-300 font-bold text-2xl">Bag is empty.</p> : (
                                 <div className="space-y-4">
-                                    {cart.map((item, idx) => (
+                                    {cart.map((item, idx) => {
+                                        const displayImg = item.images && item.images.length > 0 ? item.images[0] : item.image;
+                                        return (
                                         <div key={idx} className="bg-white p-6 rounded-3xl border flex items-center gap-6 shadow-sm relative">
                                             <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border">Code: {item.itemCode || item.id.slice(0,4)}</div>
-                                            <img src={item.image} className="w-20 h-20 rounded-2xl object-cover" />
+                                            <img src={displayImg} className="w-20 h-20 rounded-2xl object-cover" />
                                             <div className="flex-1"><p className="font-bold text-lg">{item.name}</p><p className="text-red-600 font-bold">Rs. {item.finalPrice} x {item.quantity}</p></div>
                                             <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-300 p-3 bg-red-50 rounded-full"><i className="fas fa-trash"></i></button>
                                         </div>
-                                    ))}
+                                    )})}
                                     <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shadow-2xl mt-12 text-center">
                                         <div className="flex justify-between text-3xl font-black mb-8"><span>Total Bill</span><span>Rs. {cart.reduce((a,b)=>a+(b.finalPrice*b.quantity), 0)}</span></div>
                                         <button className="w-full bg-red-600 text-white py-6 rounded-2xl font-black text-xl hover:bg-red-700" onClick={() => {
@@ -479,3 +510,4 @@
     </script>
 </body>
 </html>
+ 
