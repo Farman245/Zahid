@@ -67,6 +67,7 @@
         const DELIVERY_CHARGE = 150; 
 
         function App() {
+            // Main State
             const [view, setView] = useState('home');
             const [products, setProducts] = useState([]);
             const [cart, setCart] = useState([]);
@@ -79,17 +80,35 @@
             const [searchQuery, setSearchQuery] = useState('');
             const [activeTab, setActiveTab] = useState('Menu');
 
-            // Authentication State
+            // Product Modal State (Moved up to prevent white screen)
+            const [modalQty, setModalQty] = useState(1);
+            const [modalImgIndex, setModalImgIndex] = useState(0);
+
+            // Auth State
             const [user, setUser] = useState(null);
             const [resellerProfile, setResellerProfile] = useState(null);
             const [showAuthModal, setShowAuthModal] = useState(false);
+            const [authIsLogin, setAuthIsLogin] = useState(true);
+            const [authEmail, setAuthEmail] = useState('');
+            const [authPassword, setAuthPassword] = useState('');
+            const [authName, setAuthName] = useState('');
+            const [authPhone, setAuthPhone] = useState('');
+            const [authStoreName, setAuthStoreName] = useState('');
+            const [authCity, setAuthCity] = useState(''); 
+            const [authLoading, setAuthLoading] = useState(false);
 
-            // Dropshipping Order Form State
+            // Dropshipping Checkout State
             const [showCheckout, setShowCheckout] = useState(false);
             const [orderForm, setOrderForm] = useState({
                 customerName: '', customerPhone: '', customerAddress: '', customerCity: '',
                 resellerProfit: '', resellerStoreName: ''
             });
+
+            // Admin Panel State
+            const [adminForm, setAdminForm] = useState({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
+            const [adminEditId, setAdminEditId] = useState(null);
+            const [adminImgFiles, setAdminImgFiles] = useState([]);
+            const [adminIsSaving, setAdminIsSaving] = useState(false);
 
             useEffect(() => {
                 const unsubscribeAuth = auth.onAuthStateChanged(async (currentUser) => {
@@ -114,7 +133,11 @@
                     const productId = urlParams.get('p');
                     if (productId) {
                         const targetProduct = fetchedProducts.find(prod => prod.id === productId);
-                        if (targetProduct) setSelectedProduct(targetProduct);
+                        if (targetProduct) {
+                            setSelectedProduct(targetProduct);
+                            setModalQty(1);
+                            setModalImgIndex(0);
+                        }
                     }
                 });
                 return () => { unsubscribeAuth(); unsubscribeProducts(); };
@@ -126,66 +149,57 @@
                 return price;
             };
 
-            const AuthModal = () => {
-                if (!showAuthModal) return null;
-                const [isLogin, setIsLogin] = useState(true);
-                const [email, setEmail] = useState('');
-                const [password, setPassword] = useState('');
-                const [name, setName] = useState('');
-                const [phone, setPhone] = useState('');
-                const [storeName, setStoreName] = useState('');
-                const [city, setCity] = useState(''); 
-                const [authLoading, setAuthLoading] = useState(false);
-
-                const handleAuth = async (e) => {
-                    e.preventDefault();
-                    setAuthLoading(true);
-                    try {
-                        if (isLogin) {
-                            await auth.signInWithEmailAndPassword(email, password);
-                            setShowAuthModal(false);
-                            if(cart.length > 0) setShowCheckout(true);
-                        } else {
-                            const userCred = await auth.createUserWithEmailAndPassword(email, password);
-                            await db.collection('resellers').doc(userCred.user.uid).set({
-                                name, phone, storeName, city, email, createdAt: new Date()
-                            });
-                            setShowAuthModal(false);
-                            if(cart.length > 0) setShowCheckout(true);
-                        }
-                    } catch (error) {
-                        alert(error.message);
+            const handleAuthSubmit = async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                try {
+                    if (authIsLogin) {
+                        await auth.signInWithEmailAndPassword(authEmail, authPassword);
+                        setShowAuthModal(false);
+                        if(cart.length > 0) setShowCheckout(true);
+                    } else {
+                        const userCred = await auth.createUserWithEmailAndPassword(authEmail, authPassword);
+                        await db.collection('resellers').doc(userCred.user.uid).set({
+                            name: authName, phone: authPhone, storeName: authStoreName, city: authCity, email: authEmail, createdAt: new Date()
+                        });
+                        setShowAuthModal(false);
+                        if(cart.length > 0) setShowCheckout(true);
                     }
-                    setAuthLoading(false);
-                };
+                } catch (error) {
+                    alert(error.message);
+                }
+                setAuthLoading(false);
+            };
 
+            const renderAuthModal = () => {
+                if (!showAuthModal) return null;
                 return (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4">
                         <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 animate-modal relative max-h-[90vh] overflow-y-auto hide-scrollbar">
                             <button onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 bg-gray-100 p-2 rounded-full w-10 h-10 flex items-center justify-center"><i className="fas fa-times"></i></button>
-                            <h2 className="text-3xl font-black text-gray-900 mb-2">{isLogin ? 'Welcome Back!' : 'Become a Reseller'}</h2>
-                            <p className="text-gray-500 mb-8 font-medium">{isLogin ? 'Login to place your dropship orders.' : 'Join our dropshipping network today.'}</p>
+                            <h2 className="text-3xl font-black text-gray-900 mb-2">{authIsLogin ? 'Welcome Back!' : 'Become a Reseller'}</h2>
+                            <p className="text-gray-500 mb-8 font-medium">{authIsLogin ? 'Login to place your dropship orders.' : 'Join our dropshipping network today.'}</p>
                             
-                            <form onSubmit={handleAuth} className="space-y-4">
-                                {!isLogin && (
+                            <form onSubmit={handleAuthSubmit} className="space-y-4">
+                                {!authIsLogin && (
                                     <>
-                                        <input required placeholder="Your Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={name} onChange={e=>setName(e.target.value)} />
-                                        <input required placeholder="WhatsApp Number" type="number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={phone} onChange={e=>setPhone(e.target.value)} />
-                                        <input required placeholder="Your Store/Business Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={storeName} onChange={e=>setStoreName(e.target.value)} />
-                                        <input required placeholder="Your City" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={city} onChange={e=>setCity(e.target.value)} />
+                                        <input required placeholder="Your Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authName} onChange={e=>setAuthName(e.target.value)} />
+                                        <input required placeholder="WhatsApp Number" type="number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authPhone} onChange={e=>setAuthPhone(e.target.value)} />
+                                        <input required placeholder="Your Store/Business Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authStoreName} onChange={e=>setAuthStoreName(e.target.value)} />
+                                        <input required placeholder="Your City" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authCity} onChange={e=>setAuthCity(e.target.value)} />
                                     </>
                                 )}
-                                <input required type="email" placeholder="Email Address" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={email} onChange={e=>setEmail(e.target.value)} />
-                                <input required type="password" placeholder="Password (Min 6 chars)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={password} onChange={e=>setPassword(e.target.value)} />
+                                <input required type="email" placeholder="Email Address" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} />
+                                <input required type="password" placeholder="Password (Min 6 chars)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} />
                                 
                                 <button disabled={authLoading} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700 mt-4">
-                                    {authLoading ? 'Please wait...' : (isLogin ? 'Login' : 'Create Reseller Account')}
+                                    {authLoading ? 'Please wait...' : (authIsLogin ? 'Login' : 'Create Reseller Account')}
                                 </button>
                             </form>
                             
                             <div className="mt-6 text-center">
-                                <button onClick={() => setIsLogin(!isLogin)} className="text-red-600 font-bold text-sm">
-                                    {isLogin ? "Don't have an account? Sign Up" : "Already a reseller? Login here"}
+                                <button onClick={() => setAuthIsLogin(!authIsLogin)} type="button" className="text-red-600 font-bold text-sm">
+                                    {authIsLogin ? "Don't have an account? Sign Up" : "Already a reseller? Login here"}
                                 </button>
                             </div>
                         </div>
@@ -193,7 +207,7 @@
                 );
             };
 
-            const Navbar = () => (
+            const renderNavbar = () => (
                 <nav className="glass-panel text-gray-800 sticky top-0 z-50 shadow-sm border-b border-gray-100">
                     <div className="bg-red-600 text-white text-[11px] py-2 px-4 flex justify-between items-center font-medium">
                         <span>Start your Dropshipping Business with Qari Hosiery!</span>
@@ -226,7 +240,7 @@
                 </nav>
             );
 
-            const Sidebar = () => (
+            const renderSidebar = () => (
                 <div className={`fixed inset-0 z-[100] flex ${isMenuOpen ? '' : 'pointer-events-none'}`}>
                     <div className={`fixed inset-0 bg-black/50 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`} onClick={() => setIsMenuOpen(false)}></div>
                     <div className={`relative bg-white w-full max-w-xs h-full flex flex-col animate-sidebar shadow-2xl transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -267,12 +281,10 @@
                 </div>
             );
 
-            const ProductModal = () => {
+            const renderProductModal = () => {
                 if (!selectedProduct) return null;
                 const p = selectedProduct;
-                const [qty, setQty] = useState(1);
-                const [activeImgIndex, setActiveImgIndex] = useState(0);
-                const currentPrice = calculatePrice(p, qty);
+                const currentPrice = calculatePrice(p, modalQty);
                 const isOutOfStock = p.inStock === false;
                 const imageList = p.images && p.images.length > 0 ? p.images : [p.image];
 
@@ -283,7 +295,7 @@
                     try {
                         await navigator.clipboard.writeText(shareText);
                         const link = document.createElement('a');
-                        link.href = imageList[activeImgIndex];
+                        link.href = imageList[modalImgIndex];
                         link.download = `Product_${p.itemCode || p.id.slice(0,4)}.jpg`;
                         document.body.appendChild(link);
                         link.click();
@@ -313,12 +325,12 @@
                                 </div>
                             </div>
                             <div className="relative mb-4">
-                                <img src={imageList[activeImgIndex]} className={`w-full h-64 object-cover rounded-3xl shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
+                                <img src={imageList[modalImgIndex]} className={`w-full h-64 object-cover rounded-3xl shadow-sm ${isOutOfStock ? 'opacity-50 grayscale' : ''}`} />
                                 {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center"><span className="bg-red-600 text-white px-6 py-2 font-black text-xl transform -rotate-12 rounded-xl border-4 border-white shadow-xl">SOLD OUT</span></div>}
                             </div>
                             {imageList.length > 1 && (
                                 <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-6 pb-2">
-                                    {imageList.map((img, idx) => <img key={idx} src={img} onClick={() => setActiveImgIndex(idx)} className={`w-16 h-16 object-cover rounded-xl cursor-pointer flex-shrink-0 border-2 ${activeImgIndex === idx ? 'border-red-600 scale-105' : 'border-transparent opacity-70'}`} />)}
+                                    {imageList.map((img, idx) => <img key={idx} src={img} onClick={() => setModalImgIndex(idx)} className={`w-16 h-16 object-cover rounded-xl cursor-pointer flex-shrink-0 border-2 ${modalImgIndex === idx ? 'border-red-600 scale-105' : 'border-transparent opacity-70'}`} />)}
                                 </div>
                             )}
                             <div className="space-y-6">
@@ -333,21 +345,21 @@
                                 {!isOutOfStock && (
                                     <div className="flex items-center justify-between pt-4 border-t">
                                         <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl">
-                                            <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-10 h-10 bg-white rounded-xl shadow-sm">-</button>
-                                            <span className="font-black w-8 text-center text-lg">{qty}</span>
-                                            <button onClick={() => setQty(qty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
+                                            <button onClick={() => setModalQty(Math.max(1, modalQty - 1))} className="w-10 h-10 bg-white rounded-xl shadow-sm">-</button>
+                                            <span className="font-black w-8 text-center text-lg">{modalQty}</span>
+                                            <button onClick={() => setModalQty(modalQty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
                                         </div>
-                                        <div className="text-right"><p className="text-xs text-gray-400 font-bold uppercase">Wholesale Price</p><p className="text-2xl font-black text-red-600">Rs. {currentPrice * qty}</p></div>
+                                        <div className="text-right"><p className="text-xs text-gray-400 font-bold uppercase">Wholesale Price</p><p className="text-2xl font-black text-red-600">Rs. {currentPrice * modalQty}</p></div>
                                     </div>
                                 )}
                                 <button disabled={isOutOfStock} onClick={() => {
                                     setCart(prev => {
                                         const ex = prev.find(i => i.id === p.id);
-                                        if(ex) return prev.map(i => i.id === p.id ? {...i, quantity: i.quantity + qty} : i);
-                                        return [...prev, { ...p, quantity: qty, finalPrice: currentPrice }];
+                                        if(ex) return prev.map(i => i.id === p.id ? {...i, quantity: i.quantity + modalQty} : i);
+                                        return [...prev, { ...p, quantity: modalQty, finalPrice: currentPrice }];
                                     });
                                     closeModal();
-                                    if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * qty});
+                                    if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * modalQty});
                                 }} className={`w-full py-5 rounded-3xl font-black text-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-red-600 text-white shadow-xl hover:bg-red-700'}`}>
                                     {isOutOfStock ? 'Currently Unavailable' : 'Add to Cart'}
                                 </button>
@@ -361,7 +373,14 @@
                 const isOutOfStock = p.inStock === false;
                 const displayImg = p.images && p.images.length > 0 ? p.images[0] : p.image;
                 return (
-                    <div key={p.id} onClick={() => { if (!isOutOfStock) { setSelectedProduct(p); window.history.pushState({}, document.title, `?p=${p.id}`); } }} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
+                    <div key={p.id} onClick={() => { 
+                        if (!isOutOfStock) { 
+                            setSelectedProduct(p); 
+                            setModalQty(1);
+                            setModalImgIndex(0);
+                            window.history.pushState({}, document.title, `?p=${p.id}`); 
+                        } 
+                    }} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
                         <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border shadow-sm">Code: {p.itemCode || p.id.slice(0,4)}</div>
                         <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black z-10 flex items-center gap-1 shadow-md"><i className="fas fa-fire text-[9px]"></i> {p.fakeSold || "500+"} Sold</div>
                         {isOutOfStock && <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center"><span className="bg-red-600 text-white font-black px-6 py-2 text-xl rounded-xl transform -rotate-12 border-4 border-white shadow-xl">SOLD OUT</span></div>}
@@ -378,7 +397,7 @@
                 );
             };
 
-            const Home = () => {
+            const renderHome = () => {
                 const isFiltering = selectedCategory !== 'All' || searchQuery !== '';
                 const filtered = products.filter(p => (selectedCategory === 'All' || p.category === selectedCategory) && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
                 const productsByCategory = {};
@@ -433,7 +452,7 @@
                 );
             };
 
-            const CartAndCheckout = () => {
+            const renderCartAndCheckout = () => {
                 const wholesaleTotal = cart.reduce((a,b)=>a+(b.finalPrice*b.quantity), 0);
                 const profitAmount = Number(orderForm.resellerProfit) || 0;
                 const grandTotalCOD = wholesaleTotal + DELIVERY_CHARGE + profitAmount;
@@ -517,19 +536,14 @@
                 );
             };
 
-            const AdminPanel = () => {
-                const [pForm, setPForm] = useState({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' });
-                const [editId, setEditId] = useState(null);
-                const [imgFiles, setImgFiles] = useState([]);
-                const [isSaving, setIsSaving] = useState(false);
-
+            const renderAdminPanel = () => {
                 const saveProduct = async (e) => {
                     e.preventDefault();
-                    setIsSaving(true);
+                    setAdminIsSaving(true);
                     try {
-                        let finalImages = editId ? (products.find(p => p.id === editId).images || [products.find(p => p.id === editId).image].filter(Boolean)) : [];
-                        if (imgFiles && imgFiles.length > 0) {
-                            finalImages = await Promise.all(Array.from(imgFiles).map(file => {
+                        let finalImages = adminEditId ? (products.find(p => p.id === adminEditId).images || [products.find(p => p.id === adminEditId).image].filter(Boolean)) : [];
+                        if (adminImgFiles && adminImgFiles.length > 0) {
+                            finalImages = await Promise.all(Array.from(adminImgFiles).map(file => {
                                 return new Promise(res => {
                                     const reader = new FileReader();
                                     reader.readAsDataURL(file);
@@ -545,18 +559,18 @@
                                 });
                             }));
                         }
-                        const finalCode = pForm.itemCode || Math.floor(1000 + Math.random() * 9000).toString();
-                        const finalData = { ...pForm, itemCode: finalCode, price: Number(pForm.price), bulkQty: pForm.bulkQty ? Number(pForm.bulkQty) : null, bulkPrice: pForm.bulkPrice ? Number(pForm.bulkPrice) : null, inStock: pForm.inStock, images: finalImages, image: finalImages[0] || "" };
+                        const finalCode = adminForm.itemCode || Math.floor(1000 + Math.random() * 9000).toString();
+                        const finalData = { ...adminForm, itemCode: finalCode, price: Number(adminForm.price), bulkQty: adminForm.bulkQty ? Number(adminForm.bulkQty) : null, bulkPrice: adminForm.bulkPrice ? Number(adminForm.bulkPrice) : null, inStock: adminForm.inStock, images: finalImages, image: finalImages[0] || "" };
                         
-                        if (editId) await db.collection("products").doc(editId).update(finalData);
+                        if (adminEditId) await db.collection("products").doc(adminEditId).update(finalData);
                         else await db.collection("products").add(finalData);
                         
-                        alert("Product Saved!"); setEditId(null); setPForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' }); setImgFiles([]);
+                        alert("Product Saved!"); setAdminEditId(null); setAdminForm({ name: '', itemCode: '', price: '', unit: '', category: 'Socks', description: '', sizes: '', colors: '', bulkQty: '', bulkPrice: '', inStock: true, fakeSold: '' }); setAdminImgFiles([]);
                     } catch (err) { alert("Error saving!"); }
-                    setIsSaving(false);
+                    setAdminIsSaving(false);
                 };
 
-                const editProduct = (p) => { setEditId(p.id); setPForm({name: p.name || '', itemCode: p.itemCode || '', price: p.price || '', unit: p.unit || '', category: p.category || 'Socks', description: p.description || '', sizes: p.sizes || '', colors: p.colors || '', bulkQty: p.bulkQty || '', bulkPrice: p.bulkPrice || '', inStock: p.inStock !== false, fakeSold: p.fakeSold || ''}); window.scrollTo(0,0); };
+                const editProduct = (p) => { setAdminEditId(p.id); setAdminForm({name: p.name || '', itemCode: p.itemCode || '', price: p.price || '', unit: p.unit || '', category: p.category || 'Socks', description: p.description || '', sizes: p.sizes || '', colors: p.colors || '', bulkQty: p.bulkQty || '', bulkPrice: p.bulkPrice || '', inStock: p.inStock !== false, fakeSold: p.fakeSold || ''}); window.scrollTo(0,0); };
 
                 if(!isAdmin) return (
                     <div className="p-10 text-center flex flex-col items-center mt-20">
@@ -569,44 +583,44 @@
                 return (
                     <div className="p-6 max-w-2xl mx-auto space-y-8 py-10">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-black text-gray-900">{editId ? "Edit Product" : "Add New Product"}</h2>
+                            <h2 className="text-2xl font-black text-gray-900">{adminEditId ? "Edit Product" : "Add New Product"}</h2>
                             <button onClick={()=>setIsAdmin(false)} className="text-red-600 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl">Logout</button>
                         </div>
                         <form className="space-y-6 bg-white p-8 rounded-3xl shadow-lg border border-gray-100" onSubmit={saveProduct}>
-                            <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.name} onChange={e=>setPForm({...pForm, name:e.target.value})} />
+                            <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.name} onChange={e=>setAdminForm({...adminForm, name:e.target.value})} />
                             <div className="grid grid-cols-2 gap-4">
-                                <input placeholder="Item Code" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold" value={pForm.itemCode} onChange={e=>setPForm({...pForm, itemCode:e.target.value})} />
-                                <input placeholder="Fake Sold" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.fakeSold} onChange={e=>setPForm({...pForm, fakeSold:e.target.value})} />
+                                <input placeholder="Item Code" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold" value={adminForm.itemCode} onChange={e=>setAdminForm({...adminForm, itemCode:e.target.value})} />
+                                <input placeholder="Fake Sold" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.fakeSold} onChange={e=>setAdminForm({...adminForm, fakeSold:e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.price} onChange={e=>setPForm({...pForm, price:e.target.value})} />
-                                <input required placeholder="Unit" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.unit} onChange={e=>setPForm({...pForm, unit:e.target.value})} />
+                                <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.price} onChange={e=>setAdminForm({...adminForm, price:e.target.value})} />
+                                <input required placeholder="Unit" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.unit} onChange={e=>setAdminForm({...adminForm, unit:e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <input placeholder="Sizes" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.sizes} onChange={e=>setPForm({...pForm, sizes:e.target.value})} />
-                                <input placeholder="Colors" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={pForm.colors} onChange={e=>setPForm({...pForm, colors:e.target.value})} />
+                                <input placeholder="Sizes" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.sizes} onChange={e=>setAdminForm({...adminForm, sizes:e.target.value})} />
+                                <input placeholder="Colors" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.colors} onChange={e=>setAdminForm({...adminForm, colors:e.target.value})} />
                             </div>
                             <div className="bg-red-50 p-6 rounded-[2rem] space-y-4 border border-red-100">
                                 <label className="block text-xs font-black text-red-700 uppercase tracking-widest">Wholesale Pricing</label>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <input type="number" placeholder="Bulk Qty" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={pForm.bulkQty} onChange={e=>setPForm({...pForm, bulkQty:e.target.value})} />
-                                    <input type="number" placeholder="Bulk Price" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={pForm.bulkPrice} onChange={e=>setPForm({...pForm, bulkPrice:e.target.value})} />
+                                    <input type="number" placeholder="Bulk Qty" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={adminForm.bulkQty} onChange={e=>setAdminForm({...adminForm, bulkQty:e.target.value})} />
+                                    <input type="number" placeholder="Bulk Price" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={adminForm.bulkPrice} onChange={e=>setAdminForm({...adminForm, bulkPrice:e.target.value})} />
                                 </div>
                             </div>
-                            <textarea placeholder="Product Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-red-500" value={pForm.description} onChange={e=>setPForm({...pForm, description:e.target.value})} />
-                            <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold text-gray-700" value={pForm.category} onChange={e=>setPForm({...pForm, category:e.target.value})}>
+                            <textarea placeholder="Product Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-red-500" value={adminForm.description} onChange={e=>setAdminForm({...adminForm, description:e.target.value})} />
+                            <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold text-gray-700" value={adminForm.category} onChange={e=>setAdminForm({...adminForm, category:e.target.value})}>
                                 {categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}
                             </select>
                             <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer border border-gray-200">
-                                <input type="checkbox" checked={pForm.inStock} onChange={e=>setPForm({...pForm, inStock: e.target.checked})} className="w-6 h-6 accent-red-600 rounded" />
-                                <span className={`font-bold ${pForm.inStock ? 'text-gray-700' : 'text-red-600'}`}>{pForm.inStock ? "Item In Stock" : "Mark as Out of Stock"}</span>
+                                <input type="checkbox" checked={adminForm.inStock} onChange={e=>setAdminForm({...adminForm, inStock: e.target.checked})} className="w-6 h-6 accent-red-600 rounded" />
+                                <span className={`font-bold ${adminForm.inStock ? 'text-gray-700' : 'text-red-600'}`}>{adminForm.inStock ? "Item In Stock" : "Mark as Out of Stock"}</span>
                             </label>
                             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
                                 <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Upload Images (Select Multiple)</label>
-                                <input type="file" multiple accept="image/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 cursor-pointer" onChange={e=>setImgFiles(e.target.files)} />
+                                <input type="file" multiple accept="image/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 cursor-pointer" onChange={e=>setAdminImgFiles(e.target.files)} />
                             </div>
-                            <button disabled={isSaving} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700">{isSaving ? "Saving..." : (editId ? "Update Product" : "Save Product")}</button>
-                            {editId && <button type="button" onClick={()=>{setEditId(null); setPForm({name:'',itemCode:'',price:'',unit:'',category:'Socks',description:'',sizes:'',colors:'',bulkQty:'',bulkPrice:'',inStock:true,fakeSold:''});}} className="w-full text-gray-400 font-bold text-sm">Cancel Edit</button>}
+                            <button disabled={adminIsSaving} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700">{adminIsSaving ? "Saving..." : (adminEditId ? "Update Product" : "Save Product")}</button>
+                            {adminEditId && <button type="button" onClick={()=>{setAdminEditId(null); setAdminForm({name:'',itemCode:'',price:'',unit:'',category:'Socks',description:'',sizes:'',colors:'',bulkQty:'',bulkPrice:'',inStock:true,fakeSold:''});}} className="w-full text-gray-400 font-bold text-sm">Cancel Edit</button>}
                         </form>
                         
                         <div className="space-y-3 pt-10">
@@ -627,7 +641,7 @@
                 );
             };
 
-            const AboutView = () => (
+            const renderAboutView = () => (
                 <div className="p-8 max-w-3xl mx-auto py-20 text-center space-y-6">
                     <i className="fas fa-info-circle text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">About New Qari Hosiery</h2>
@@ -639,7 +653,7 @@
                 </div>
             );
 
-            const ContactView = () => (
+            const renderContactView = () => (
                 <div className="p-8 max-w-3xl mx-auto py-20 text-center space-y-6">
                     <i className="fas fa-phone-alt text-5xl text-red-100"></i>
                     <h2 className="text-4xl font-black text-gray-900 tracking-tighter">Contact Us</h2>
@@ -650,18 +664,17 @@
                 </div>
             );
 
-            // THIS IS THE FIX: Returning them as normal functions instead of React Components to prevent re-rendering glitches.
             return (
                 <div className="min-h-screen pb-20">
-                    {Navbar()}
-                    {Sidebar()}
-                    {view === 'home' && Home()}
-                    {view === 'about' && AboutView()}
-                    {view === 'contact' && ContactView()}
-                    {view === 'admin' && AdminPanel()}
-                    {view === 'cart' && CartAndCheckout()}
-                    {ProductModal()}
-                    {AuthModal()}
+                    {renderNavbar()}
+                    {renderSidebar()}
+                    {view === 'home' && renderHome()}
+                    {view === 'about' && renderAboutView()}
+                    {view === 'contact' && renderContactView()}
+                    {view === 'admin' && renderAdminPanel()}
+                    {view === 'cart' && renderCartAndCheckout()}
+                    {renderProductModal()}
+                    {renderAuthModal()}
                     <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white hover:scale-110 transition-transform"><i className="fab fa-whatsapp"></i></a>
                 </div>
             );
@@ -670,3 +683,4 @@
     </script>
 </body>
 </html>
+ 
