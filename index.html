@@ -134,7 +134,7 @@
                 const [name, setName] = useState('');
                 const [phone, setPhone] = useState('');
                 const [storeName, setStoreName] = useState('');
-                const [city, setCity] = useState(''); // NEW CITY FIELD
+                const [city, setCity] = useState(''); 
                 const [authLoading, setAuthLoading] = useState(false);
 
                 const handleAuth = async (e) => {
@@ -147,7 +147,6 @@
                             if(cart.length > 0) setShowCheckout(true);
                         } else {
                             const userCred = await auth.createUserWithEmailAndPassword(email, password);
-                            // Save city along with other details
                             await db.collection('resellers').doc(userCred.user.uid).set({
                                 name, phone, storeName, city, email, createdAt: new Date()
                             });
@@ -173,7 +172,6 @@
                                         <input required placeholder="Your Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={name} onChange={e=>setName(e.target.value)} />
                                         <input required placeholder="WhatsApp Number" type="number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={phone} onChange={e=>setPhone(e.target.value)} />
                                         <input required placeholder="Your Store/Business Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={storeName} onChange={e=>setStoreName(e.target.value)} />
-                                        {/* Added City Field */}
                                         <input required placeholder="Your City" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={city} onChange={e=>setCity(e.target.value)} />
                                     </>
                                 )}
@@ -652,17 +650,18 @@
                 </div>
             );
 
+            // THIS IS THE FIX: Returning them as normal functions instead of React Components to prevent re-rendering glitches.
             return (
                 <div className="min-h-screen pb-20">
-                    <Navbar />
-                    <Sidebar />
-                    {view === 'home' && <Home />}
-                    {view === 'about' && <AboutView />}
-                    {view === 'contact' && <ContactView />}
-                    {view === 'admin' && <AdminPanel />}
-                    {view === 'cart' && <CartAndCheckout />}
-                    <ProductModal />
-                    <AuthModal />
+                    {Navbar()}
+                    {Sidebar()}
+                    {view === 'home' && Home()}
+                    {view === 'about' && AboutView()}
+                    {view === 'contact' && ContactView()}
+                    {view === 'admin' && AdminPanel()}
+                    {view === 'cart' && CartAndCheckout()}
+                    {ProductModal()}
+                    {AuthModal()}
                     <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white hover:scale-110 transition-transform"><i className="fab fa-whatsapp"></i></a>
                 </div>
             );
