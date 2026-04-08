@@ -80,7 +80,7 @@
             const [searchQuery, setSearchQuery] = useState('');
             const [activeTab, setActiveTab] = useState('Menu');
 
-            // Product Modal State (Moved up to prevent white screen)
+            // Product Modal State
             const [modalQty, setModalQty] = useState(1);
             const [modalImgIndex, setModalImgIndex] = useState(0);
 
@@ -267,6 +267,10 @@
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery(''); setIsMenuOpen(false);}}>Home</button>
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('about'); setIsMenuOpen(false);}}>About Us</button>
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('contact'); setIsMenuOpen(false);}}>Contact Us</button>
+                                    {/* NEW RESELLER GUIDE BUTTON */}
+                                    <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium flex items-center justify-between" onClick={() => {setView('guide'); setIsMenuOpen(false);}}>
+                                        <span>Reseller Guide</span> <i className="fas fa-book-open text-red-400"></i>
+                                    </button>
                                     {!user && <button className="w-full text-left p-4 rounded-xl bg-red-50 text-red-600 font-black mt-4" onClick={() => {setShowAuthModal(true); setIsMenuOpen(false);}}>Reseller Login</button>}
                                 </div>
                             ) : (
@@ -664,23 +668,67 @@
                 </div>
             );
 
+            // NEW RESELLER GUIDE VIEW
+            const renderGuideView = () => (
+                <div className="p-6 max-w-3xl mx-auto py-12">
+                    <div className="text-center mb-10">
+                        <i className="fas fa-rocket text-5xl text-red-600 mb-4"></i>
+                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter mb-4">Reseller Guide</h2>
+                        <p className="text-gray-600 text-lg">Start your zero-investment business with New Qari Hosiery in 5 easy steps!</p>
+                    </div>
+                    
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start">
+                            <div className="bg-red-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-red-600 text-2xl font-black">1</div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Create an Account</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm">Sign up using your Name, WhatsApp number, and Store Name. This helps us track your orders and your profits securely.</p>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start">
+                            <div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-blue-600 text-2xl font-black">2</div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Share Products</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm">Browse our wholesale catalog. Click the <span className="font-bold bg-gray-100 px-2 py-1 rounded text-xs"><i className="fas fa-copy text-blue-500"></i> Copy for FB</span> button on any product to instantly save its image and copy the details to share on Facebook, WhatsApp, or Instagram.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start">
+                            <div className="bg-yellow-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-yellow-600 text-2xl font-black">3</div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Place Order & Set Profit</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm">When you get an order from your customer, add the item to your cart here. Proceed to checkout, enter your Customer's Address, and most importantly, your <span className="font-bold text-emerald-600">Profit Margin</span>.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start">
+                            <div className="bg-purple-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-purple-600 text-2xl font-black">4</div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">White-Label Delivery</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm">We will securely pack and deliver the parcel directly to your customer. The parcel will have <span className="font-bold text-gray-900">Your Store Name</span> on it, not ours! Your customer remains exclusively yours.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start">
+                            <div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-emerald-600 text-2xl font-black">5</div>
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Get Paid</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm">Once the customer receives the parcel and pays the COD amount, your profit will be directly transferred to your <span className="font-bold text-emerald-600">Easypaisa or JazzCash</span> account by our team.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-10 text-center">
+                        <button onClick={() => {setView('home');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-lg hover:bg-red-700 transition-colors w-full sm:w-auto">Start Selling Now</button>
+                    </div>
+                </div>
+            );
+
             return (
                 <div className="min-h-screen pb-20">
                     {renderNavbar()}
                     {renderSidebar()}
                     {view === 'home' && renderHome()}
                     {view === 'about' && renderAboutView()}
-                    {view === 'contact' && renderContactView()}
-                    {view === 'admin' && renderAdminPanel()}
-                    {view === 'cart' && renderCartAndCheckout()}
-                    {renderProductModal()}
-                    {renderAuthModal()}
-                    <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white hover:scale-110 transition-transform"><i className="fab fa-whatsapp"></i></a>
-                </div>
-            );
-        }
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-</body>
-</html>
- 
+                    {
