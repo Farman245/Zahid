@@ -109,6 +109,9 @@
             const [adminEditId, setAdminEditId] = useState(null);
             const [adminImgFiles, setAdminImgFiles] = useState([]);
             const [adminIsSaving, setAdminIsSaving] = useState(false);
+            
+            // AI Generator State
+            const [isGenerating, setIsGenerating] = useState(false);
 
             useEffect(() => {
                 const unsubscribeAuth = auth.onAuthStateChanged(async (currentUser) => {
@@ -169,6 +172,44 @@
                     alert(error.message);
                 }
                 setAuthLoading(false);
+            };
+
+            // AI Description Generator Function
+            const generateAIDescription = async () => {
+                if (!adminForm.name) {
+                    alert("پہلے پروڈکٹ کا نام (Product Name) لکھیں تاکہ AI اس کے مطابق ڈسکرپشن لکھ سکے۔");
+                    return;
+                }
+                
+                setIsGenerating(true);
+                // آپ کی مہیا کردہ GEMINI API KEY
+                const API_KEY = "AIzaSyBPNDmGH096xhYeylbbfWT0ngbbqq6YZQs"; 
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+
+                const promptText = `Write a professional and short product description for: ${adminForm.name}. 
+                Focus on quality, features, and comfort for a wholesale hosiery business. 
+                Keep it engaging and persuasive. Language: Roman Urdu and English mix. Do not include pricing in the description.`;
+
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+                    });
+                    const data = await response.json();
+                    
+                    if(data.candidates && data.candidates.length > 0) {
+                        const aiResponse = data.candidates[0].content.parts[0].text;
+                        setAdminForm(prev => ({ ...prev, description: aiResponse }));
+                    } else {
+                        console.error("AI Response Error:", data);
+                        alert("AI نے کوئی جواب نہیں دیا۔ اپنی API Key اور انٹرنیٹ کنکشن چیک کریں۔");
+                    }
+                } catch (error) {
+                    console.error("Fetch Error:", error);
+                    alert("AI سے رابطہ نہیں ہو سکا، براہ کرم انٹرنیٹ چیک کریں۔");
+                }
+                setIsGenerating(false);
             };
 
             // ---- RENDER FUNCTIONS ---- //
@@ -612,7 +653,27 @@
                                     <input type="number" placeholder="Bulk Price" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={adminForm.bulkPrice} onChange={e=>setAdminForm({...adminForm, bulkPrice:e.target.value})} />
                                 </div>
                             </div>
-                            <textarea placeholder="Product Description..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-red-500" value={adminForm.description} onChange={e=>setAdminForm({...adminForm, description:e.target.value})} />
+                            
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center px-1">
+                                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Product Description</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={generateAIDescription}
+                                        disabled={isGenerating}
+                                        className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] px-3 py-1 rounded-full font-black shadow-md hover:scale-105 transition-transform disabled:opacity-50"
+                                    >
+                                        {isGenerating ? "Magic is happening..." : "✨ Generate with AI"}
+                                    </button>
+                                </div>
+                                <textarea 
+                                    placeholder="Product Description..." 
+                                    className="w-full p-4 bg-gray-50 rounded-2xl outline-none h-28 focus:border-red-500 border border-gray-100" 
+                                    value={adminForm.description} 
+                                    onChange={e=>setAdminForm({...adminForm, description:e.target.value})} 
+                                />
+                            </div>
+
                             <select className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold text-gray-700" value={adminForm.category} onChange={e=>setAdminForm({...adminForm, category:e.target.value})}>
                                 {categories.filter(c=>c!=='All').map(c=><option key={c} value={c}>{c}</option>)}
                             </select>
