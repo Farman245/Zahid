@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New Qari Hosiery | Wholesale & Dropshipping</title>
+    <title>New Qari Hosiery | Wholesale B2B Store</title>
     
     <script>
       !function(f,b,e,v,n,t,s)
@@ -64,8 +64,6 @@
             'Mobile Accessories', 'Islamic Items', 'General Accessories'
         ];
 
-        const DELIVERY_CHARGE = 150; 
-
         function App() {
             // Main State
             const [view, setView] = useState('home');
@@ -100,8 +98,7 @@
             // Dropshipping Checkout State
             const [showCheckout, setShowCheckout] = useState(false);
             const [orderForm, setOrderForm] = useState({
-                customerName: '', customerPhone: '', customerAddress: '', customerCity: '',
-                resellerProfit: '', resellerStoreName: ''
+                customerName: '', customerPhone: '', customerAddress: '', customerCity: ''
             });
 
             // Admin Panel State
@@ -120,7 +117,7 @@
                         const doc = await db.collection('resellers').doc(currentUser.uid).get();
                         if (doc.exists) {
                             setResellerProfile(doc.data());
-                            setOrderForm(prev => ({...prev, resellerStoreName: doc.data().storeName || ''}));
+                            setOrderForm(prev => ({...prev, customerName: doc.data().name || '', customerPhone: doc.data().phone || '', customerCity: doc.data().city || ''}));
                         }
                     } else {
                         setResellerProfile(null);
@@ -146,12 +143,6 @@
                 return () => { unsubscribeAuth(); unsubscribeProducts(); };
             }, []);
 
-            const calculatePrice = (product, qty) => {
-                let price = product.price;
-                if (product.bulkQty && qty >= product.bulkQty) price = product.bulkPrice;
-                return price;
-            };
-
             const handleAuthSubmit = async (e) => {
                 e.preventDefault();
                 setAuthLoading(true);
@@ -174,7 +165,6 @@
                 setAuthLoading(false);
             };
 
-            // AI Description Generator Function
             const generateAIDescription = async () => {
                 if (!adminForm.name) {
                     alert("پہلے پروڈکٹ کا نام (Product Name) لکھیں تاکہ AI اس کے مطابق ڈسکرپشن لکھ سکے۔");
@@ -182,7 +172,6 @@
                 }
                 
                 setIsGenerating(true);
-                // آپ کی مہیا کردہ GEMINI API KEY
                 const API_KEY = "AIzaSyBPNDmGH096xhYeylbbfWT0ngbbqq6YZQs"; 
                 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
 
@@ -212,23 +201,21 @@
                 setIsGenerating(false);
             };
 
-            // ---- RENDER FUNCTIONS ---- //
-
             const renderAuthModal = () => {
                 if (!showAuthModal) return null;
                 return (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4">
                         <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 animate-modal relative max-h-[90vh] overflow-y-auto hide-scrollbar">
                             <button onClick={() => setShowAuthModal(false)} className="absolute top-6 right-6 bg-gray-100 p-2 rounded-full w-10 h-10 flex items-center justify-center"><i className="fas fa-times"></i></button>
-                            <h2 className="text-3xl font-black text-gray-900 mb-2">{authIsLogin ? 'Welcome Back!' : 'Become a Reseller'}</h2>
-                            <p className="text-gray-500 mb-8 font-medium">{authIsLogin ? 'Login to place your dropship orders.' : 'Join our dropshipping network today.'}</p>
+                            <h2 className="text-3xl font-black text-gray-900 mb-2">{authIsLogin ? 'Welcome Back!' : 'Create Business Account'}</h2>
+                            <p className="text-gray-500 mb-8 font-medium">{authIsLogin ? 'Login to send your inquiries.' : 'Register for wholesale orders.'}</p>
                             
                             <form onSubmit={handleAuthSubmit} className="space-y-4">
                                 {!authIsLogin && (
                                     <>
                                         <input required placeholder="Your Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authName} onChange={e=>setAuthName(e.target.value)} />
                                         <input required placeholder="WhatsApp Number" type="number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authPhone} onChange={e=>setAuthPhone(e.target.value)} />
-                                        <input required placeholder="Your Store/Business Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authStoreName} onChange={e=>setAuthStoreName(e.target.value)} />
+                                        <input required placeholder="Your Business/Shop Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authStoreName} onChange={e=>setAuthStoreName(e.target.value)} />
                                         <input required placeholder="Your City" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authCity} onChange={e=>setAuthCity(e.target.value)} />
                                     </>
                                 )}
@@ -236,13 +223,13 @@
                                 <input required type="password" placeholder="Password (Min 6 chars)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} />
                                 
                                 <button disabled={authLoading} className="w-full bg-red-600 text-white py-5 rounded-2xl font-black shadow-lg hover:bg-red-700 mt-4">
-                                    {authLoading ? 'Please wait...' : (authIsLogin ? 'Login' : 'Create Reseller Account')}
+                                    {authLoading ? 'Please wait...' : (authIsLogin ? 'Login' : 'Create Account')}
                                 </button>
                             </form>
                             
                             <div className="mt-6 text-center">
                                 <button onClick={() => setAuthIsLogin(!authIsLogin)} type="button" className="text-red-600 font-bold text-sm">
-                                    {authIsLogin ? "Don't have an account? Sign Up" : "Already a reseller? Login here"}
+                                    {authIsLogin ? "Don't have an account? Sign Up" : "Already registered? Login here"}
                                 </button>
                             </div>
                         </div>
@@ -253,7 +240,7 @@
             const renderNavbar = () => (
                 <nav className="glass-panel text-gray-800 sticky top-0 z-50 shadow-sm border-b border-gray-100">
                     <div className="bg-red-600 text-white text-[11px] py-2 px-4 flex justify-between items-center font-medium">
-                        <span>Start your Dropshipping Business with Qari Hosiery!</span>
+                        <span>Welcome to New Qari Hosiery - Premium Wholesale Products</span>
                         <div className="flex gap-3 items-center">
                             <i className="fab fa-whatsapp"></i><i className="fab fa-facebook-f"></i><i className="fab fa-instagram"></i>
                         </div>
@@ -275,7 +262,7 @@
                                 <i className={`fas ${user ? 'fa-sign-out-alt text-red-500' : 'fa-user'}`}></i>
                             </button>
                             <button onClick={() => {setView('cart'); setShowCheckout(false);}} className="relative p-2 text-gray-600">
-                                <i className="fas fa-shopping-bag text-2xl"></i>
+                                <i className="fas fa-list-alt text-2xl"></i>
                                 {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">{cart.reduce((a,b)=>a+b.quantity, 0)}</span>}
                             </button>
                         </div>
@@ -291,7 +278,7 @@
                             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl"><i className="fas fa-user"></i></div>
                             <div>
                                 <p className="font-bold">{user && resellerProfile ? resellerProfile.name : 'Guest User'}</p>
-                                <p className="text-xs opacity-80">{user ? (resellerProfile?.city ? `Reseller - ${resellerProfile.city}` : 'Verified Reseller') : 'Not logged in'}</p>
+                                <p className="text-xs opacity-80">{user ? (resellerProfile?.city ? `Business - ${resellerProfile.city}` : 'Verified Business') : 'Not logged in'}</p>
                             </div>
                         </div>
                         <div className="p-4 border-b">
@@ -310,10 +297,7 @@
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('home'); setSelectedCategory('All'); setSearchQuery(''); setIsMenuOpen(false);}}>Home</button>
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('about'); setIsMenuOpen(false);}}>About Us</button>
                                     <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium" onClick={() => {setView('contact'); setIsMenuOpen(false);}}>Contact Us</button>
-                                    <button className="w-full text-left p-4 rounded-xl hover:bg-red-50 font-medium flex items-center justify-between" onClick={() => {setView('guide'); setIsMenuOpen(false);}}>
-                                        <span>Reseller Guide</span> <i className="fas fa-book-open text-red-400"></i>
-                                    </button>
-                                    {!user && <button className="w-full text-left p-4 rounded-xl bg-red-50 text-red-600 font-black mt-4" onClick={() => {setShowAuthModal(true); setIsMenuOpen(false);}}>Reseller Login</button>}
+                                    {!user && <button className="w-full text-left p-4 rounded-xl bg-red-50 text-red-600 font-black mt-4" onClick={() => {setShowAuthModal(true); setIsMenuOpen(false);}}>Wholesale Login</button>}
                                 </div>
                             ) : (
                                 <div className="space-y-2">
@@ -330,14 +314,13 @@
             const renderProductModal = () => {
                 if (!selectedProduct) return null;
                 const p = selectedProduct;
-                const currentPrice = calculatePrice(p, modalQty);
                 const isOutOfStock = p.inStock === false;
                 const imageList = p.images && p.images.length > 0 ? p.images : [p.image];
 
                 const shareProduct = async () => {
                     const baseUrl = window.location.href.split('?')[0];
                     const shareUrl = `${baseUrl}?p=${p.id}`;
-                    const shareText = `🔥 Hot Selling Item!\n\n🛍️ ${p.name}\n💰 Price: Rs. ${p.price}\n📦 Code: ${p.itemCode || p.id.slice(0,4)}\n\n👇 Order online here:\n${shareUrl}`;
+                    const shareText = `🔥 New Arrival!\n\n🛍️ ${p.name}\n📦 Code: ${p.itemCode || p.id.slice(0,4)}\n\n👇 View details here:\n${shareUrl}`;
                     try {
                         await navigator.clipboard.writeText(shareText);
                         const link = document.createElement('a');
@@ -346,7 +329,7 @@
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
-                        alert("✅ تصویر گیلری میں Save ہو گئی ہے!\n✅ تفصیل Copy ہو گئی ہے!\n\nاب فیس بک یا واٹس ایپ پر پوسٹ کریں۔");
+                        alert("✅ تصویر گیلری میں Save ہو گئی ہے!\n✅ تفصیل Copy ہو گئی ہے!");
                     } catch (err) {
                         alert("تفصیل کاپی ہو گئی ہے! تصویر پر انگلی دبا کر 'Download Image' کریں۔");
                     }
@@ -366,7 +349,7 @@
                                     <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-black uppercase mt-2 inline-block">Code: {p.itemCode || p.id.slice(0,4)}</span>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={shareProduct} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 shadow-sm flex items-center gap-2 font-bold text-xs"><i className="fas fa-copy"></i> Copy for FB</button>
+                                    <button onClick={shareProduct} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl hover:bg-blue-100 shadow-sm flex items-center gap-2 font-bold text-xs"><i className="fas fa-share-alt"></i> Share</button>
                                     <button onClick={closeModal} className="bg-gray-100 text-gray-600 p-2 rounded-full hover:bg-gray-200 shadow-sm w-10 h-10 flex justify-center items-center"><i className="fas fa-times"></i></button>
                                 </div>
                             </div>
@@ -385,9 +368,6 @@
                                     <div><h4 className="text-xs font-black text-gray-400 uppercase mb-2">Sizes</h4><p className="font-bold text-red-600">{p.sizes || "Standard"}</p></div>
                                     <div><h4 className="text-xs font-black text-gray-400 uppercase mb-2">Colors</h4><p className="font-bold text-red-600">{p.colors || "Mixed"}</p></div>
                                 </div>
-                                {p.bulkQty && (
-                                    <div className="bg-red-50 p-4 rounded-2xl border border-red-100"><p className="text-xs font-bold text-red-700">🔥 WHOLESALE OFFER:</p><p className="text-sm font-medium">Buy {p.bulkQty} {p.unit} or more for <span className="font-black text-red-800">Rs. {p.bulkPrice}</span> / {p.unit}</p></div>
-                                )}
                                 {!isOutOfStock && (
                                     <div className="flex items-center justify-between pt-4 border-t">
                                         <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-2xl">
@@ -395,19 +375,18 @@
                                             <span className="font-black w-8 text-center text-lg">{modalQty}</span>
                                             <button onClick={() => setModalQty(modalQty + 1)} className="w-10 h-10 bg-white rounded-xl shadow-sm">+</button>
                                         </div>
-                                        <div className="text-right"><p className="text-xs text-gray-400 font-bold uppercase">Wholesale Price</p><p className="text-2xl font-black text-red-600">Rs. {currentPrice * modalQty}</p></div>
                                     </div>
                                 )}
                                 <button disabled={isOutOfStock} onClick={() => {
                                     setCart(prev => {
                                         const ex = prev.find(i => i.id === p.id);
                                         if(ex) return prev.map(i => i.id === p.id ? {...i, quantity: i.quantity + modalQty} : i);
-                                        return [...prev, { ...p, quantity: modalQty, finalPrice: currentPrice }];
+                                        return [...prev, { ...p, quantity: modalQty }];
                                     });
                                     closeModal();
-                                    if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name, value: currentPrice * modalQty});
+                                    if(typeof fbq !== 'undefined') fbq('track', 'AddToCart', {content_name: p.name});
                                 }} className={`w-full py-5 rounded-3xl font-black text-lg ${isOutOfStock ? 'bg-gray-300 text-gray-500' : 'bg-red-600 text-white shadow-xl hover:bg-red-700'}`}>
-                                    {isOutOfStock ? 'Currently Unavailable' : 'Add to Cart'}
+                                    {isOutOfStock ? 'Currently Unavailable' : 'Add to Inquiry List'}
                                 </button>
                             </div>
                         </div>
@@ -428,15 +407,15 @@
                         } 
                     }} className={`bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group relative cursor-pointer ${isOutOfStock ? 'opacity-70 grayscale' : 'hover:shadow-xl transition-all'}`}>
                         <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border shadow-sm">Code: {p.itemCode || p.id.slice(0,4)}</div>
-                        <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black z-10 flex items-center gap-1 shadow-md"><i className="fas fa-fire text-[9px]"></i> {p.fakeSold || "500+"} Sold</div>
+                        <div className="absolute top-3 right-3 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black z-10 flex items-center gap-1 shadow-md"><i className="fas fa-fire text-[9px]"></i> {p.fakeSold || "Top"} Quality</div>
                         {isOutOfStock && <div className="absolute inset-0 bg-white/50 z-20 flex items-center justify-center"><span className="bg-red-600 text-white font-black px-6 py-2 text-xl rounded-xl transform -rotate-12 border-4 border-white shadow-xl">SOLD OUT</span></div>}
                         <img src={displayImg} className="w-full h-48 object-cover" />
                         <div className="p-5 flex-1 flex flex-col">
                             <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{p.name}</h3>
-                            <p className="text-red-600 font-black text-xl">Rs. {p.price}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-4">/ {p.unit} (Wholesale)</p>
+                            <p className="text-red-600 font-bold mt-2"><i className="fas fa-tags"></i> Wholesale Inquiry</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-4">/ {p.unit}</p>
                             <button className={`mt-auto w-full py-3 rounded-2xl text-xs font-black ${isOutOfStock ? 'bg-gray-200 text-gray-500' : 'bg-red-50 text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors'}`}>
-                                {isOutOfStock ? 'Out of Stock' : 'View Details & Resell'}
+                                {isOutOfStock ? 'Out of Stock' : 'View Details'}
                             </button>
                         </div>
                     </div>
@@ -459,8 +438,8 @@
                         <div className="relative h-64 bg-gray-900 flex items-center justify-center text-center px-6">
                             <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1603251493015-844a4e8d3809?q=80&w=1000')] bg-cover bg-center"></div>
                             <div className="relative z-10 text-white max-w-2xl">
-                                <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter">Start Dropshipping</h2>
-                                <p className="text-sm font-medium opacity-90 leading-relaxed">Resell our premium products. We pack & deliver directly to your customers with YOUR store name!</p>
+                                <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter">Premium Wholesale Hosiery</h2>
+                                <p className="text-sm font-medium opacity-90 leading-relaxed">Direct factory rates. Request a quote for your business today!</p>
                             </div>
                         </div>
                         <div className="p-4 max-w-7xl mx-auto py-10">
@@ -499,16 +478,12 @@
             };
 
             const renderCartAndCheckout = () => {
-                const wholesaleTotal = cart.reduce((a,b)=>a+(b.finalPrice*b.quantity), 0);
-                const profitAmount = Number(orderForm.resellerProfit) || 0;
-                const grandTotalCOD = wholesaleTotal + DELIVERY_CHARGE + profitAmount;
-
-                const submitDropshipOrder = () => {
+                const submitInquiry = () => {
                     if(!orderForm.customerName || !orderForm.customerPhone || !orderForm.customerAddress || !orderForm.customerCity) {
-                        alert("Please fill all customer details."); return;
+                        alert("Please fill all business details."); return;
                     }
-                    const itemsText = cart.map(i => `- [Code: ${i.itemCode || i.id.slice(0,4)}] ${i.name} (Rs. ${i.finalPrice}) x${i.quantity} ${i.unit}`).join('%0A');
-                    const msg = `*📦 NEW DROPSHIP ORDER 📦*%0A%0A*Reseller:* ${resellerProfile?.name || 'Guest'} (${resellerProfile?.phone || 'N/A'})%0A*Reseller City:* ${resellerProfile?.city || 'N/A'}%0A%0A*Customer Details:*%0AName: ${orderForm.customerName}%0APhone: ${orderForm.customerPhone}%0ACity: ${orderForm.customerCity}%0AAddress: ${orderForm.customerAddress}%0A%0A*White-label Store:* ${orderForm.resellerStoreName || 'Standard'}%0A%0A*Items:*%0A${itemsText}%0A%0A*Financials:*%0AWholesale Total: Rs. ${wholesaleTotal}%0ADelivery: Rs. ${DELIVERY_CHARGE}%0AReseller Profit: Rs. ${profitAmount}%0A*------------------------*%0A*Amount to Collect (COD): Rs. ${grandTotalCOD}*`;
+                    const itemsText = cart.map(i => `- [Code: ${i.itemCode || i.id.slice(0,4)}] ${i.name} x${i.quantity} ${i.unit}`).join('%0A');
+                    const msg = `*📦 NEW WHOLESALE INQUIRY 📦*%0A%0A*Business/Customer Details:*%0AName: ${orderForm.customerName}%0APhone: ${orderForm.customerPhone}%0ACity: ${orderForm.customerCity}%0AAddress: ${orderForm.customerAddress}%0A%0A*Requested Items for Quotation:*%0A${itemsText}%0A%0A*Please provide wholesale rates for the above items.*`;
                     
                     window.open(`https://wa.me/923065378112?text=${msg}`);
                     setCart([]); setShowCheckout(false); setView('home');
@@ -516,66 +491,46 @@
 
                 if (cart.length === 0) return (
                     <div className="p-8 max-w-3xl mx-auto py-12 text-center space-y-4">
-                        <h2 className="text-4xl font-black mb-10 tracking-tighter">Your Bag</h2>
-                        <i className="fas fa-shopping-bag text-6xl text-gray-300"></i>
-                        <p className="text-2xl font-bold text-gray-400">Bag is empty.</p>
+                        <h2 className="text-4xl font-black mb-10 tracking-tighter">Inquiry List</h2>
+                        <i className="fas fa-list-alt text-6xl text-gray-300"></i>
+                        <p className="text-2xl font-bold text-gray-400">Your list is empty.</p>
                     </div>
                 );
 
                 return (
                     <div className="p-8 max-w-3xl mx-auto py-12">
-                        <h2 className="text-4xl font-black mb-10 tracking-tighter text-gray-900">Your Bag</h2>
+                        <h2 className="text-4xl font-black mb-10 tracking-tighter text-gray-900">Inquiry List</h2>
                         {!showCheckout ? (
                             <div className="space-y-4">
                                 {cart.map((item, idx) => (
                                     <div key={idx} className="bg-white p-6 rounded-3xl border flex items-center gap-6 shadow-sm relative">
                                         <div className="absolute top-3 left-3 bg-white/90 px-2 py-1 rounded-lg text-[10px] font-black z-10 border">Code: {item.itemCode || item.id.slice(0,4)}</div>
                                         <img src={item.images && item.images.length > 0 ? item.images[0] : item.image} className="w-20 h-20 rounded-2xl object-cover" />
-                                        <div className="flex-1"><p className="font-bold text-lg">{item.name}</p><p className="text-red-600 font-bold">Rs. {item.finalPrice} x {item.quantity}</p></div>
+                                        <div className="flex-1"><p className="font-bold text-lg">{item.name}</p><p className="text-gray-500 font-bold">Qty: {item.quantity} {item.unit}</p></div>
                                         <button onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} className="text-red-300 p-3 bg-red-50 rounded-full"><i className="fas fa-trash"></i></button>
                                     </div>
                                 ))}
                                 <div className="bg-gray-900 text-white p-10 rounded-[2.5rem] shadow-2xl mt-12 text-center">
-                                    <div className="flex justify-between text-2xl font-black mb-2"><span>Wholesale Total</span><span>Rs. {wholesaleTotal}</span></div>
-                                    <p className="text-gray-400 text-sm mb-8 text-left">Delivery & Profit added in next step.</p>
-                                    <button className="w-full bg-red-600 text-white py-6 rounded-2xl font-black text-xl hover:bg-red-700 shadow-lg" onClick={() => {
-                                        if(!user) setShowAuthModal(true);
-                                        else setShowCheckout(true);
-                                    }}>
-                                        {user ? "Proceed to Dropship Order" : "Login to Proceed"} <i className="fas fa-arrow-right ml-2"></i>
+                                    <p className="text-gray-300 text-sm mb-8 text-left">Send us your selected items and quantities to get the best wholesale quotation.</p>
+                                    <button className="w-full bg-red-600 text-white py-6 rounded-2xl font-black text-xl hover:bg-red-700 shadow-lg" onClick={() => setShowCheckout(true)}>
+                                        Proceed to Request Quote <i className="fas fa-arrow-right ml-2"></i>
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 space-y-6">
-                                <h3 className="text-2xl font-black text-gray-800 border-b pb-4">Customer Details</h3>
+                                <h3 className="text-2xl font-black text-gray-800 border-b pb-4">Business Details</h3>
                                 <div className="space-y-4">
-                                    <input required placeholder="Customer Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={orderForm.customerName} onChange={e=>setOrderForm({...orderForm, customerName: e.target.value})} />
-                                    <input required type="number" placeholder="Customer Mobile Number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={orderForm.customerPhone} onChange={e=>setOrderForm({...orderForm, customerPhone: e.target.value})} />
+                                    <input required placeholder="Business / Full Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={orderForm.customerName} onChange={e=>setOrderForm({...orderForm, customerName: e.target.value})} />
+                                    <input required type="number" placeholder="Mobile / WhatsApp Number" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={orderForm.customerPhone} onChange={e=>setOrderForm({...orderForm, customerPhone: e.target.value})} />
                                     <input required placeholder="City" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={orderForm.customerCity} onChange={e=>setOrderForm({...orderForm, customerCity: e.target.value})} />
                                     <textarea required placeholder="Complete Delivery Address" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 h-24" value={orderForm.customerAddress} onChange={e=>setOrderForm({...orderForm, customerAddress: e.target.value})} />
                                 </div>
-                                <h3 className="text-2xl font-black text-gray-800 border-b pb-4 pt-6">Your Earnings</h3>
-                                <div className="space-y-4">
-                                    <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-                                        <label className="block text-xs font-black text-emerald-700 uppercase tracking-widest mb-2">Your Profit Margin (Rs.)</label>
-                                        <input type="number" placeholder="e.g. 300" className="w-full p-4 bg-white rounded-xl outline-none focus:border-emerald-500 font-bold text-lg" value={orderForm.resellerProfit} onChange={e=>setOrderForm({...orderForm, resellerProfit: e.target.value})} />
-                                    </div>
-                                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                                        <label className="block text-xs font-black text-blue-700 uppercase tracking-widest mb-2">White-Label Store Name</label>
-                                        <input placeholder="Your Store Name on Parcel" className="w-full p-4 bg-white rounded-xl outline-none focus:border-blue-500 font-bold" value={orderForm.resellerStoreName} onChange={e=>setOrderForm({...orderForm, resellerStoreName: e.target.value})} />
-                                    </div>
-                                </div>
+                                
                                 <div className="bg-gray-900 text-white p-8 rounded-3xl mt-8">
-                                    <div className="space-y-2 mb-6 text-sm text-gray-300">
-                                        <div className="flex justify-between"><span>Wholesale Total:</span> <span>Rs. {wholesaleTotal}</span></div>
-                                        <div className="flex justify-between"><span>Delivery:</span> <span>Rs. {DELIVERY_CHARGE}</span></div>
-                                        <div className="flex justify-between text-emerald-400 font-bold"><span>Your Profit:</span> <span>+ Rs. {profitAmount}</span></div>
-                                    </div>
-                                    <div className="flex justify-between text-2xl font-black border-t border-gray-700 pt-4 mb-8"><span>COD Amount</span><span className="text-red-400">Rs. {grandTotalCOD}</span></div>
-                                    <button className="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-red-700 flex justify-center items-center gap-3" onClick={submitDropshipOrder}>Confirm Order <i className="fab fa-whatsapp"></i></button>
+                                    <button className="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-red-700 flex justify-center items-center gap-3" onClick={submitInquiry}>Send Inquiry on WhatsApp <i className="fab fa-whatsapp"></i></button>
                                 </div>
-                                <button onClick={() => setShowCheckout(false)} className="w-full text-gray-400 font-bold text-sm mt-4">Back to Cart</button>
+                                <button onClick={() => setShowCheckout(false)} className="w-full text-gray-400 font-bold text-sm mt-4">Back to List</button>
                             </div>
                         )}
                     </div>
@@ -636,10 +591,10 @@
                             <input required placeholder="Product Name" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.name} onChange={e=>setAdminForm({...adminForm, name:e.target.value})} />
                             <div className="grid grid-cols-2 gap-4">
                                 <input placeholder="Item Code" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500 font-bold" value={adminForm.itemCode} onChange={e=>setAdminForm({...adminForm, itemCode:e.target.value})} />
-                                <input placeholder="Fake Sold" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.fakeSold} onChange={e=>setAdminForm({...adminForm, fakeSold:e.target.value})} />
+                                <input placeholder="Highlight Tag (e.g. Top Quality)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.fakeSold} onChange={e=>setAdminForm({...adminForm, fakeSold:e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <input required type="number" placeholder="Regular Price" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.price} onChange={e=>setAdminForm({...adminForm, price:e.target.value})} />
+                                <input required type="number" placeholder="Regular Price (Hidden from frontend)" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.price} onChange={e=>setAdminForm({...adminForm, price:e.target.value})} />
                                 <input required placeholder="Unit" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.unit} onChange={e=>setAdminForm({...adminForm, unit:e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -647,7 +602,7 @@
                                 <input placeholder="Colors" className="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:border-red-500" value={adminForm.colors} onChange={e=>setAdminForm({...adminForm, colors:e.target.value})} />
                             </div>
                             <div className="bg-red-50 p-6 rounded-[2rem] space-y-4 border border-red-100">
-                                <label className="block text-xs font-black text-red-700 uppercase tracking-widest">Wholesale Pricing</label>
+                                <label className="block text-xs font-black text-red-700 uppercase tracking-widest">Wholesale Pricing (Internal Use)</label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <input type="number" placeholder="Bulk Qty" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={adminForm.bulkQty} onChange={e=>setAdminForm({...adminForm, bulkQty:e.target.value})} />
                                     <input type="number" placeholder="Bulk Price" className="w-full p-4 bg-white rounded-2xl outline-none focus:border-red-500" value={adminForm.bulkPrice} onChange={e=>setAdminForm({...adminForm, bulkPrice:e.target.value})} />
@@ -695,7 +650,7 @@
                                 const displayImg = p.images && p.images.length > 0 ? p.images[0] : p.image;
                                 return (
                                 <div key={p.id} className={`bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm ${p.inStock===false?'opacity-60':''}`}>
-                                    <div className="flex items-center gap-4"><img src={displayImg} className="w-12 h-12 rounded-xl object-cover" /><div><p className="font-bold text-sm">{p.name}</p><span className="text-xs font-bold text-red-600">Rs. {p.price}</span></div></div>
+                                    <div className="flex items-center gap-4"><img src={displayImg} className="w-12 h-12 rounded-xl object-cover" /><div><p className="font-bold text-sm">{p.name}</p><span className="text-xs font-bold text-red-600">Code: {p.itemCode}</span></div></div>
                                     <div className="flex gap-2">
                                         <button onClick={()=>editProduct(p)} className="text-blue-500 p-2 bg-blue-50 rounded-full w-10 h-10"><i className="fas fa-edit"></i></button>
                                         <button onClick={() => confirm("Delete?") && db.collection("products").doc(p.id).delete()} className="text-red-400 p-2 bg-red-50 rounded-full w-10 h-10"><i className="fas fa-trash-alt"></i></button>
@@ -730,24 +685,6 @@
                 </div>
             );
 
-            const renderGuideView = () => (
-                <div className="p-6 max-w-3xl mx-auto py-12">
-                    <div className="text-center mb-10">
-                        <i className="fas fa-rocket text-5xl text-red-600 mb-4"></i>
-                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter mb-4">Reseller Guide</h2>
-                        <p className="text-gray-600 text-lg">Start your zero-investment business with New Qari Hosiery in 5 easy steps!</p>
-                    </div>
-                    <div className="space-y-6">
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start"><div className="bg-red-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-red-600 text-2xl font-black">1</div><div><h3 className="text-xl font-bold text-gray-900 mb-2">Create an Account</h3><p className="text-gray-600 leading-relaxed text-sm">Sign up using your Name, WhatsApp number, and Store Name. This helps us track your orders and your profits securely.</p></div></div>
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start"><div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-blue-600 text-2xl font-black">2</div><div><h3 className="text-xl font-bold text-gray-900 mb-2">Share Products</h3><p className="text-gray-600 leading-relaxed text-sm">Browse our wholesale catalog. Click the <span className="font-bold bg-gray-100 px-2 py-1 rounded text-xs"><i className="fas fa-copy text-blue-500"></i> Copy for FB</span> button on any product to instantly save its image and copy the details to share.</p></div></div>
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start"><div className="bg-yellow-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-yellow-600 text-2xl font-black">3</div><div><h3 className="text-xl font-bold text-gray-900 mb-2">Place Order & Set Profit</h3><p className="text-gray-600 leading-relaxed text-sm">When you get an order from your customer, add the item to your cart here. Proceed to checkout, enter your Customer's Address, and your <span className="font-bold text-emerald-600">Profit Margin</span>.</p></div></div>
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start"><div className="bg-purple-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-purple-600 text-2xl font-black">4</div><div><h3 className="text-xl font-bold text-gray-900 mb-2">White-Label Delivery</h3><p className="text-gray-600 leading-relaxed text-sm">We will securely pack and deliver the parcel directly to your customer. The parcel will have <span className="font-bold text-gray-900">Your Store Name</span> on it, not ours!</p></div></div>
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex gap-6 items-start"><div className="bg-emerald-50 w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-emerald-600 text-2xl font-black">5</div><div><h3 className="text-xl font-bold text-gray-900 mb-2">Get Paid</h3><p className="text-gray-600 leading-relaxed text-sm">Once the customer receives the parcel and pays the COD amount, your profit will be transferred to your <span className="font-bold text-emerald-600">Easypaisa or JazzCash</span> account.</p></div></div>
-                    </div>
-                    <div className="pt-10 text-center"><button onClick={() => {setView('home');}} className="px-8 py-4 bg-red-600 text-white font-bold rounded-full text-sm uppercase tracking-widest shadow-lg hover:bg-red-700 transition-colors w-full sm:w-auto">Start Selling Now</button></div>
-                </div>
-            );
-
             return (
                 <div className="min-h-screen pb-20">
                     {renderNavbar()}
@@ -757,7 +694,6 @@
                     {view === 'contact' && renderContactView()}
                     {view === 'admin' && renderAdminPanel()}
                     {view === 'cart' && renderCartAndCheckout()}
-                    {view === 'guide' && renderGuideView()}
                     {renderProductModal()}
                     {renderAuthModal()}
                     <a href="https://wa.me/923065378112" target="_blank" className="fixed bottom-6 right-6 z-40 bg-emerald-500 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-2xl border-4 border-white hover:scale-110 transition-transform"><i className="fab fa-whatsapp"></i></a>
